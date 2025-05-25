@@ -16,8 +16,8 @@ class ClaimConfig(BaseModel):
 
 class SnipeConfig(BaseModel):
     kakera: bool
-    character: bool
-    series: bool
+    character: list[str]
+    series: list[str]
 
 
 class RollConfig(BaseModel):

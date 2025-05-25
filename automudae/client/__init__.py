@@ -2,6 +2,8 @@ import asyncio
 import logging
 
 import discord
+from discord.ext import tasks
+from datetime import time, timezone
 
 from automudae.client.roll import MudaeRollMixin
 from automudae.client.timers import MudaeTimerMixin
@@ -16,6 +18,10 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         self.config = config
         # Mode is either rolling, claiming, or kakera reacting
         self.mode_lock = asyncio.Lock()
+
+        self.claim_task: asyncio.Task[None] | None = None
+        self.send_tu_task: asyncio.Task[None] | None = None
+
         logger.info("Initialization Complete")
 
     async def on_ready(self):
@@ -27,6 +33,9 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             logger.error("Channel is not a Text Channel")
             return
         self.mudae_channel = mudae_channel
+        
+        self.claim_task = self.claim.start()
+        self.send_tu_task = self.send_tu.start()
 
     async def on_message(self, message: discord.Message):
         if self.is_mudae_timer_list_msg(
@@ -45,10 +54,53 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         elif self.is_claimable_roll(msg=message):
             roll_result = await self.enqueue_claimable_roll(msg=message)
             logger.info(
-                f"CLAIM [{roll_result.author.display_name}] {roll_result.character} from {roll_result.series} @{roll_result.kakera} Kakera"
+                f"[QUEUE] {roll_result.author.display_name} => {roll_result.character} from {roll_result.series} @{roll_result.kakera} Kakera"
             )
-        elif self.is_kakera_reactable_roll(msg=message):
-            roll_result = await self.enqueue_kakera_reactable_roll(msg=message)
-            logger.info(
-                f"KAKERA [{roll_result.author.display_name}] {roll_result.character} from {roll_result.series} @{roll_result.kakera} Kakera"
-            )
+        # elif self.is_kakera_reactable_roll(msg=message):
+        #     roll_result = await self.enqueue_kakera_reactable_roll(msg=message)
+        #     logger.info(
+        #         f"KAKERA [{roll_result.author.display_name}] {roll_result.character} from {roll_result.series} @{roll_result.kakera} Kakera"
+        #     )
+    
+    @tasks.loop(time=[time(hour=hour, minute=15, tzinfo=timezone.utc) for hour in range(24)])
+    async def send_tu(self):
+        async with self.mode_lock:
+            await self.__send_tu()
+
+    @tasks.loop(seconds=1.0)
+    async def claim(self):
+        if not self.user:
+            return
+        if not self.can_claim:
+            return
+        async with self.mode_lock:
+            async with self.claimable_roll_lock:
+                claimable_count = len(self.claimable_roll_queue)
+                while claimable_count != 0:
+                    claimable_roll = self.claimable_roll_queue.pop(0)
+                    claimable_count = len(self.claimable_roll_queue)
+
+                    character_in_snipelist = (
+                        claimable_roll.character in self.config.mudae.snipe.character
+                    )
+                    character_in_wishlist = (
+                        claimable_roll.character in self.config.mudae.wish.character
+                    )
+                    roll_is_mine = claimable_roll.author.id == self.user.id
+                    logger.info(
+                        f"[CLAIM] {claimable_roll.character} from {claimable_roll.series} ({character_in_snipelist}, {character_in_wishlist}, {roll_is_mine})"
+                    )
+
+                    if character_in_snipelist:
+                        await claimable_roll.claim()
+                        await self.__send_tu()
+                        continue
+
+                    if character_in_wishlist and roll_is_mine:
+                        await claimable_roll.claim()
+                        await self.__send_tu()
+                        continue
+
+    async def __send_tu(self):
+        logger.info("Sending $tu")
+        await self.mudae_channel.send("$tu")
