@@ -40,7 +40,7 @@ class MudaeTimerMixin:
             claim_pattern = re.search(r"you (can|can\'t) claim", clean_msg)
             self.can_claim = bool(claim_pattern and claim_pattern.group(1) == "can")
 
-            rolls_pattern = re.search(r"You have (\d+) rolls left", clean_msg)
+            rolls_pattern = re.search(r"You have (\d+) rolls? left", clean_msg)
             self.rolls_left = bool(rolls_pattern and int(rolls_pattern.group(1)))
 
             kakera_pattern = re.search(r"You (can|can\'t) react to kakera", clean_msg)
