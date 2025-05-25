@@ -118,12 +118,10 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     continue
 
                 snipe_criteria = self.config.mudae.claim.snipe
-                character_qualifies = (
-                    claimable_roll.character in snipe_criteria.character
+                roll_qualifies = claimable_roll.is_qualified_using_criteria(
+                    snipe_criteria
                 )
-                series_qualifies = claimable_roll.series in snipe_criteria.series
-                kakera_qualifies = claimable_roll.kakera >= snipe_criteria.minKakera
-                if character_qualifies or series_qualifies or kakera_qualifies:
+                if roll_qualifies:
                     logger.info(
                         f"[CLAIM] Sniping {claimable_roll.character} from {claimable_roll.author.display_name}"
                     )
@@ -134,16 +132,10 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                 roll_is_mine = claimable_roll.author.id == self.user.id
 
                 early_claim_criteria = self.config.mudae.claim.earlyClaim
-                character_qualifies = (
-                    claimable_roll.character in early_claim_criteria.character
+                roll_qualifies = claimable_roll.is_qualified_using_criteria(
+                    early_claim_criteria
                 )
-                series_qualifies = claimable_roll.series in early_claim_criteria.series
-                kakera_qualifies = (
-                    claimable_roll.kakera >= early_claim_criteria.minKakera
-                )
-                if roll_is_mine and (
-                    character_qualifies or series_qualifies or kakera_qualifies
-                ):
+                if roll_is_mine and roll_qualifies:
                     logger.info(
                         f"[CLAIM] Early Claiming {claimable_roll.character} ({claimable_roll.series})"
                     )
@@ -152,20 +144,10 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     continue
 
                 late_claim_criteria = self.config.mudae.claim.lateClaim
-                character_qualifies = (
-                    claimable_roll.character in late_claim_criteria.character
+                roll_qualifies = claimable_roll.is_qualified_using_criteria(
+                    late_claim_criteria
                 )
-                series_qualifies = (
-                    claimable_roll.series in late_claim_criteria.series
-                )
-                kakera_qualifies = (
-                    claimable_roll.kakera >= late_claim_criteria.minKakera
-                )
-                if (
-                    roll_is_mine
-                    and self.next_hour_is_claim_reset
-                    and (character_qualifies or series_qualifies or kakera_qualifies)
-                ):
+                if roll_is_mine and self.next_hour_is_claim_reset and roll_qualifies:
                     logger.info(
                         f"[CLAIM] Late Claiming {claimable_roll.character} ({claimable_roll.series})"
                     )
@@ -200,9 +182,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     continue
 
                 if roll_is_mine:
-                    logger.info(
-                        f"[KAKERA] Kakera React to {claimable_roll.character}"
-                    )
+                    logger.info(f"[KAKERA] Kakera React to {claimable_roll.character}")
                     await claimable_roll.kakera_react()
                     await self.__send_tu()
                     continue

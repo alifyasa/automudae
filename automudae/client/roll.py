@@ -4,7 +4,7 @@ import re
 
 import discord
 
-from automudae.config.v1 import Config
+from automudae.config.v1 import ClaimPreferences, Config
 
 
 class Roll:
@@ -32,7 +32,7 @@ class Roll:
 
     async def claim(self) -> None:
         await self.msg.add_reaction("❤️")
-    
+
     def get_kakera_react_button(self) -> discord.Button | None:
         if not self.msg.components:
             return
@@ -54,6 +54,13 @@ class Roll:
         if not button:
             return
         await button.click()
+
+    def is_qualified_using_criteria(self, criteria: ClaimPreferences) -> bool:
+        character_qualifies = self.character in criteria.character
+        series_qualifies = self.series in criteria.series
+        kakera_qualifies = self.kakera >= criteria.minKakera
+
+        return character_qualifies or series_qualifies or kakera_qualifies
 
 
 logger = logging.getLogger(__name__)
