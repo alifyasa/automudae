@@ -49,7 +49,10 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             await self.enqueue_roll_command(msg=message, config=self.config)
             logger.info(f"Handled a Roll Command by {message.author.display_name}")
         elif self.is_failed_roll_command(msg=message):
-            roll_command_author = await self.dequeue_roll_command()
+            if message.interaction:
+                roll_command_author = message.interaction.user
+            else:
+                roll_command_author = await self.dequeue_roll_command()
             logger.info(
                 f"Handled a Failed Roll Command by {roll_command_author.display_name}"
             )
@@ -90,7 +93,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                 while claimable_count != 0:
                     claimable_roll = self.claimable_roll_queue.pop(0)
                     claimable_count = len(self.claimable_roll_queue)
-                    logger.info(f"[CLAIM] Count: {claimable_count}")
+                    logger.debug(f"[CLAIM] Count: {claimable_count}")
 
                     character_in_snipelist = (
                         claimable_roll.character in self.config.mudae.snipe.character
