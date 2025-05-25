@@ -1,0 +1,8 @@
+services:
+  automudae:
+    build:
+      context: .
+    volumes:
+      - .:/app
+    environment:
+      - ENV=development
