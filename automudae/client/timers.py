@@ -13,10 +13,10 @@ class MudaeTimerMixin:
     def __init__(self) -> None:
         super().__init__()
         self.timer_lock = asyncio.Lock()
-        self.can_claim = False
-        self.can_react_to_kakera = False
-        self.rolls_left = 0
-        self.next_hour_is_claim_reset = False
+        self.can_claim: bool = False
+        self.can_react_to_kakera: bool = False
+        self.rolls_left: int = 0
+        self.next_hour_is_claim_reset: bool = False
         logger.info("Initialization Complete")
 
     def is_mudae_timer_list_msg(
@@ -39,15 +39,16 @@ class MudaeTimerMixin:
             clean_msg = discord.utils.remove_markdown(msg.content)
 
             claim_pattern = re.search(r"you (can|can\'t) claim", clean_msg)
-            self.can_claim = bool(claim_pattern and claim_pattern.group(1) == "can")
+            assert claim_pattern
+            self.can_claim = claim_pattern.group(1) == "can"
 
             rolls_pattern = re.search(r"You have (\d+) rolls? left", clean_msg)
-            self.rolls_left = bool(rolls_pattern and int(rolls_pattern.group(1)))
+            assert rolls_pattern
+            self.rolls_left = int(rolls_pattern.group(1)) if rolls_pattern.group(1) else 0
 
             kakera_pattern = re.search(r"You (can|can\'t) react to kakera", clean_msg)
-            self.can_react_to_kakera = bool(
-                kakera_pattern and kakera_pattern.group(1) == "can"
-            )
+            assert kakera_pattern
+            self.can_react_to_kakera = kakera_pattern.group(1) == "can"
 
             claim_reset_pattern = re.search(
                 r"(?:The next claim reset is in|you can't claim for another)\s+(?:(\d+)h\s*)?(\d+)\s*min", clean_msg
