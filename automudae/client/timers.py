@@ -1,8 +1,8 @@
+import asyncio
 import logging
 import re
 
 import discord
-import asyncio
 
 from automudae.config.v1 import Config
 

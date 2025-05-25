@@ -53,6 +53,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             await self.enqueue_roll_command(msg=message, config=self.config)
             logger.info(f"Handled a Roll Command by {message.author.display_name}")
         elif self.is_failed_roll_command(msg=message):
+            roll_command_author: discord.user.BaseUser | discord.Member
             if message.interaction:
                 roll_command_author = message.interaction.user
             else:
@@ -77,7 +78,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
     async def send_tu(self) -> None:
         async with self.mode_lock:
             await self.__send_tu()
-    
+
     @tasks.loop(seconds=5.0)
     async def roll(self) -> None:
         if not self.user:
@@ -112,10 +113,12 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     claimable_count = len(self.claimable_roll_queue)
 
                     character_in_snipelist = (
-                        claimable_roll.character in self.config.mudae.snipe.character
+                        claimable_roll.character
+                        in self.config.mudae.claim.snipe.character
                     )
-                    character_in_wishlist = (
-                        claimable_roll.character in self.config.mudae.wish.character
+                    character_in_earlyclaimlist = (
+                        claimable_roll.character
+                        in self.config.mudae.claim.earlyClaim.character
                     )
                     roll_is_mine = claimable_roll.author.id == self.user.id
 
@@ -133,7 +136,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                         await self.__send_tu()
                         continue
 
-                    if character_in_wishlist and roll_is_mine:
+                    if character_in_earlyclaimlist and roll_is_mine:
                         logger.info(
                             f"[CLAIM] Claiming {claimable_roll.character} ({claimable_roll.series})"
                         )
@@ -142,7 +145,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                         continue
 
                     logger.info(
-                        f"[CLAIM] Not claiming {claimable_roll.character} ({character_in_snipelist}, {character_in_wishlist}, {roll_is_mine}, {claimable_count})"
+                        f"[CLAIM] Not claiming {claimable_roll.character} ({character_in_snipelist}, {character_in_earlyclaimlist}, {roll_is_mine}, {claimable_count})"
                     )
 
     @tasks.loop(seconds=1.0)
@@ -163,11 +166,15 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     )
 
                     if not self.can_react_to_kakera:
-                        logger.warning("[KAKERA] Kakera not processed: Cannot react to Kakera")
+                        logger.warning(
+                            "[KAKERA] Kakera not processed: Cannot react to Kakera"
+                        )
                         return
 
                     if roll_is_mine:
-                        logger.warning(f"[KAKERA] Kakera React to {claimable_roll.character}")
+                        logger.warning(
+                            f"[KAKERA] Kakera React to {claimable_roll.character}"
+                        )
                         await claimable_roll.kakera_react()
                         await self.__send_tu()
                         continue

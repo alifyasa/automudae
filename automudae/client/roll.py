@@ -47,9 +47,7 @@ class Roll:
                 if "kakera" not in child.emoji.name:
                     continue
                 await child.click()
-                logger.info(
-                    f"Clicked Kakera React on {self.character} ({self.series})"
-                )
+                logger.info(f"Clicked Kakera React on {self.character} ({self.series})")
         return
 
 
@@ -100,6 +98,7 @@ class MudaeRollMixin:
 
     async def enqueue_claimable_roll(self, msg: discord.Message):
         async with self.claimable_roll_lock:
+            author: discord.user.BaseUser | discord.Member
             if msg.interaction:
                 author = msg.interaction.user
             else:
@@ -127,6 +126,7 @@ class MudaeRollMixin:
 
     async def enqueue_kakera_reactable_roll(self, msg: discord.Message):
         async with self.kakera_reactable_roll_lock:
+            author: discord.user.BaseUser | discord.Member
             if msg.interaction:
                 author = msg.interaction.user
             else:

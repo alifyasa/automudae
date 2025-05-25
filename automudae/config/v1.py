@@ -4,20 +4,16 @@ import yaml
 from pydantic import BaseModel
 
 
-class WishConfig(BaseModel):
-    character: list[str]
-    series: list[str]
+class ClaimPreferences(BaseModel):
+    character: list[str] = []
+    series: list[str] = []
+    minKakera: int = 10_000
 
 
 class ClaimConfig(BaseModel):
-    claimBeforeResetIfKakeraMoreThan: int
-    claimRegardlessResetIfKakeraMoreThan: int
-
-
-class SnipeConfig(BaseModel):
-    kakera: bool
-    character: list[str]
-    series: list[str]
+    snipe: ClaimPreferences
+    earlyClaim: ClaimPreferences
+    efficientClaim: ClaimPreferences
 
 
 class RollConfig(BaseModel):
@@ -26,9 +22,7 @@ class RollConfig(BaseModel):
 
 class MudaeConfig(BaseModel):
     roll: RollConfig
-    snipe: SnipeConfig
     claim: ClaimConfig
-    wish: WishConfig
 
 
 class DiscordConfig(BaseModel):
