@@ -11,9 +11,9 @@ class ClaimPreferences(BaseModel):
 
 
 class ClaimConfig(BaseModel):
-    snipe: ClaimPreferences
-    earlyClaim: ClaimPreferences
-    efficientClaim: ClaimPreferences
+    snipe: ClaimPreferences = ClaimPreferences()
+    earlyClaim: ClaimPreferences = ClaimPreferences()
+    lateClaim: ClaimPreferences = ClaimPreferences()
 
 
 class RollConfig(BaseModel):

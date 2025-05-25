@@ -147,15 +147,15 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     await self.__send_tu()
                     continue
 
-                efficient_claim_criteria = self.config.mudae.claim.efficientClaim
+                late_claim_criteria = self.config.mudae.claim.lateClaim
                 character_qualifies = (
-                    claimable_roll.character in efficient_claim_criteria.character
+                    claimable_roll.character in late_claim_criteria.character
                 )
                 series_qualifies = (
-                    claimable_roll.series in efficient_claim_criteria.series
+                    claimable_roll.series in late_claim_criteria.series
                 )
                 kakera_qualifies = (
-                    claimable_roll.kakera >= efficient_claim_criteria.minKakera
+                    claimable_roll.kakera >= late_claim_criteria.minKakera
                 )
                 if (
                     roll_is_mine
