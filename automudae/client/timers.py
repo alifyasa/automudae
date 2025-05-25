@@ -44,14 +44,17 @@ class MudaeTimerMixin:
 
             rolls_pattern = re.search(r"You have (\d+) rolls? left", clean_msg)
             assert rolls_pattern
-            self.rolls_left = int(rolls_pattern.group(1)) if rolls_pattern.group(1) else 0
+            self.rolls_left = (
+                int(rolls_pattern.group(1)) if rolls_pattern.group(1) else 0
+            )
 
             kakera_pattern = re.search(r"You (can|can\'t) react to kakera", clean_msg)
             assert kakera_pattern
             self.can_react_to_kakera = kakera_pattern.group(1) == "can"
 
             claim_reset_pattern = re.search(
-                r"(?:The next claim reset is in|you can't claim for another)\s+(?:(\d+)h\s*)?(\d+)\s*min", clean_msg
+                r"(?:The next claim reset is in|you can't claim for another)\s+(?:(\d+)h\s*)?(\d+)\s*min",
+                clean_msg,
             )
             assert claim_reset_pattern
             claim_reset_hours = (
@@ -62,4 +65,6 @@ class MudaeTimerMixin:
             )
             next_claim_reset_in_minutes = claim_reset_hours * 60 + claim_reset_minutes
             self.next_hour_is_claim_reset = next_claim_reset_in_minutes <= 60
-            logger.info(f"[Claim: {self.can_claim}] [Kakera React: {self.can_react_to_kakera}] [Rolls: {self.rolls_left}] [NextHourClaimReset: {self.next_hour_is_claim_reset}]")
+            logger.info(
+                f"[Claim: {self.can_claim}] [Kakera React: {self.can_react_to_kakera}] [Rolls: {self.rolls_left}] [NextHourClaimReset: {self.next_hour_is_claim_reset}]"
+            )
