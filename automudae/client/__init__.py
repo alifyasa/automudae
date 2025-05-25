@@ -1,9 +1,9 @@
 import asyncio
 import logging
+from datetime import time, timezone
 
 import discord
 from discord.ext import tasks
-from datetime import time, timezone
 
 from automudae.client.roll import MudaeRollMixin
 from automudae.client.timers import MudaeTimerMixin
@@ -22,6 +22,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         self.claim_task: asyncio.Task[None] | None = None
         self.send_tu_task: asyncio.Task[None] | None = None
 
+        logger.setLevel(logging.INFO)
         logger.info("Initialization Complete")
 
     async def on_ready(self):
@@ -33,11 +34,12 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             logger.error("Channel is not a Text Channel")
             return
         self.mudae_channel = mudae_channel
-        
+
         self.claim_task = self.claim.start()
         self.send_tu_task = self.send_tu.start()
 
     async def on_message(self, message: discord.Message):
+        logger.debug("Handling a Message")
         if self.is_mudae_timer_list_msg(
             msg=message, user=self.user, config=self.config
         ):
@@ -56,22 +58,31 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             logger.info(
                 f"[QUEUE] {roll_result.author.display_name} => {roll_result.character} from {roll_result.series} @{roll_result.kakera} Kakera"
             )
+        else:
+            logger.debug(f"Reactions: {message.reactions}")
         # elif self.is_kakera_reactable_roll(msg=message):
         #     roll_result = await self.enqueue_kakera_reactable_roll(msg=message)
         #     logger.info(
         #         f"KAKERA [{roll_result.author.display_name}] {roll_result.character} from {roll_result.series} @{roll_result.kakera} Kakera"
         #     )
-    
-    @tasks.loop(time=[time(hour=hour, minute=15, tzinfo=timezone.utc) for hour in range(24)])
+
+    @tasks.loop(
+        time=[time(hour=hour, minute=15, tzinfo=timezone.utc) for hour in range(24)]
+    )
     async def send_tu(self):
+        logger.debug("Send $tu Heartbeat Start")
         async with self.mode_lock:
             await self.__send_tu()
+        logger.debug("Send $tu Heartbeat End")
 
     @tasks.loop(seconds=1.0)
     async def claim(self):
+        logger.debug("Claim heartbeat start")
         if not self.user:
+            logger.debug("Claim heartbeat end because: Not Logged In")
             return
         if not self.can_claim:
+            logger.debug("Claim heartbeat end because: Cannot Claim")
             return
         async with self.mode_lock:
             async with self.claimable_roll_lock:
@@ -79,6 +90,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                 while claimable_count != 0:
                     claimable_roll = self.claimable_roll_queue.pop(0)
                     claimable_count = len(self.claimable_roll_queue)
+                    logger.info(f"[CLAIM] Count: {claimable_count}")
 
                     character_in_snipelist = (
                         claimable_roll.character in self.config.mudae.snipe.character
@@ -100,6 +112,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                         await claimable_roll.claim()
                         await self.__send_tu()
                         continue
+        logger.debug("Claim heartbeat end normally")
 
     async def __send_tu(self):
         logger.info("Sending $tu")
