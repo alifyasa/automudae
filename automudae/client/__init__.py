@@ -19,6 +19,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         # Mode is either rolling, claiming, or kakera reacting
         self.mode_lock = asyncio.Lock()
 
+        self.roll_task: asyncio.Task[None] | None = None
         self.claim_task: asyncio.Task[None] | None = None
         self.send_tu_task: asyncio.Task[None] | None = None
         self.kakera_react_task: asyncio.Task[None] | None = None
@@ -36,6 +37,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             return
         self.mudae_channel = mudae_channel
 
+        self.roll_task = self.roll.start()
         self.claim_task = self.claim.start()
         self.send_tu_task = self.send_tu.start()
         self.kakera_react_task = self.kakera_react.start()
@@ -76,7 +78,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         async with self.mode_lock:
             await self.__send_tu()
     
-    @tasks.loop(seconds=1.0)
+    @tasks.loop(seconds=5.0)
     async def roll(self) -> None:
         if not self.user:
             logger.warning("[ROLL] Roll not processed: User is not logged in")
@@ -91,6 +93,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     return
 
                 await self.mudae_channel.send(self.config.mudae.roll.command)
+                await asyncio.sleep(3.0)
                 await self.__send_tu()
 
     @tasks.loop(seconds=1.0)
