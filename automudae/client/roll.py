@@ -30,6 +30,9 @@ class Roll:
         assert kakera_match, embed.description
         self.kakera = int(kakera_match.group(1))
 
+    async def claim(self):
+        await self.msg.add_reaction("❤️")
+
 
 logger = logging.getLogger(__name__)
 
