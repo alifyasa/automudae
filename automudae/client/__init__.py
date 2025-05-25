@@ -42,6 +42,8 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         self.send_tu_task = self.send_tu.start()
         self.kakera_react_task = self.kakera_react.start()
 
+        await self.__send_tu()
+
     async def on_message(self, message: discord.Message):
         logger.debug("Handling a Message")
         if self.is_mudae_timer_list_msg(
