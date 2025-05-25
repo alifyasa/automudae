@@ -2,9 +2,6 @@
 
 Automatically Plays Mudae
 
-## Logic
+## Configuration
 
-1. Every hour, `$tu`.
-2. Every second, rolls.
-3. Every second, claim.
-3. Every second, react.
+See `config_schema.yaml`.
