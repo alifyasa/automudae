@@ -6,9 +6,11 @@ from automudae.config.v1 import Config
 logger = logging.getLogger(__name__)
 class MudaeTimerMixin:
     def __init__(self) -> None:
+        super().__init__()
         self.can_claim = False
         self.can_react_to_kakera = False
         self.rolls_left = 0
+        logger.info("Initialization Complete")
         
     def is_mudae_timer_list_msg(self, msg: discord.Message, user: discord.ClientUser | None, config: Config):
         if not user: return False
