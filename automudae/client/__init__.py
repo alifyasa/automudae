@@ -82,7 +82,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         async with self.mode_lock:
             await self.__send_tu()
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(seconds=3)
     async def roll(self) -> None:
         if not self.user:
             logger.warning("[ROLL] Roll not processed: User is not logged in")
@@ -94,10 +94,11 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             if self.rolls_left <= 0:
                 logger.debug("[ROLL] Roll not processed: No Rolls Left")
                 return
-            for _ in range(self.rolls_left):
-                await self.mudae_channel.send(self.config.mudae.roll.command)
-                await asyncio.sleep(5)
-            await self.__send_tu()
+            await self.mudae_channel.send(self.config.mudae.roll.command)
+            self.rolls_left = self.rolls_left - 1
+            if self.rolls_left <= 1:
+                await asyncio.sleep(1.5)
+                await self.__send_tu()
 
     @tasks.loop(seconds=1.0)
     async def claim(self) -> None:
@@ -166,7 +167,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     and (character_qualifies or series_qualifies or kakera_qualifies)
                 ):
                     logger.info(
-                        f"[CLAIM] Efficient Claiming {claimable_roll.character} ({claimable_roll.series})"
+                        f"[CLAIM] Late Claiming {claimable_roll.character} ({claimable_roll.series})"
                     )
                     await claimable_roll.claim()
                     await self.__send_tu()
