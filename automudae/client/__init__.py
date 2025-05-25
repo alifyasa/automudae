@@ -82,7 +82,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         async with self.mode_lock:
             await self.__send_tu()
 
-    @tasks.loop(seconds=5.0)
+    @tasks.loop(minutes=1)
     async def roll(self) -> None:
         if not self.user:
             logger.warning("[ROLL] Roll not processed: User is not logged in")
@@ -94,9 +94,9 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             if self.rolls_left <= 0:
                 logger.debug("[ROLL] Roll not processed: No Rolls Left")
                 return
-
-            await self.mudae_channel.send(self.config.mudae.roll.command)
-            await asyncio.sleep(2.5)
+            for _ in range(self.rolls_left):
+                await self.mudae_channel.send(self.config.mudae.roll.command)
+                await asyncio.sleep(5)
             await self.__send_tu()
 
     @tasks.loop(seconds=1.0)
