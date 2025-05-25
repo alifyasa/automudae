@@ -168,7 +168,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
 
                     if roll_is_mine:
                         logger.warning(f"[KAKERA] Kakera React to {claimable_roll.character}")
-                        await claimable_roll.claim()
+                        await claimable_roll.kakera_react()
                         await self.__send_tu()
                         continue
 

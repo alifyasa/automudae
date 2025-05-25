@@ -37,13 +37,20 @@ class Roll:
         if not self.msg.components:
             return
         for component in self.msg.components:
-            if component.type != discord.ComponentType.button:
+            if not isinstance(component, discord.ActionRow):
                 continue
-            if not component.emoji:
-                continue
-            if "kakera" not in component.emoji.name:
-                continue
-            await component.click()
+            for child in component.children:
+                if not isinstance(child, discord.Button):
+                    continue
+                if not child.emoji:
+                    continue
+                if "kakera" not in child.emoji.name:
+                    continue
+                await child.click()
+                logger.info(
+                    f"Clicked Kakera React on {self.character} ({self.series})"
+                )
+        return
 
 
 logger = logging.getLogger(__name__)
