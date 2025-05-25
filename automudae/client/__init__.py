@@ -93,8 +93,11 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     return
 
                 await self.mudae_channel.send(self.config.mudae.roll.command)
-                await asyncio.sleep(3.0)
-                await self.__send_tu()
+
+                # On last roll, send $tu
+                if self.rolls_left == 1:
+                    await asyncio.sleep(2.5)
+                    await self.__send_tu()
 
     @tasks.loop(seconds=1.0)
     async def claim(self) -> None:
