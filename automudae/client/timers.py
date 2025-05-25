@@ -2,6 +2,7 @@ import logging
 import re
 
 import discord
+import asyncio
 
 from automudae.config.v1 import Config
 
@@ -11,6 +12,7 @@ logger = logging.getLogger(__name__)
 class MudaeTimerMixin:
     def __init__(self) -> None:
         super().__init__()
+        self.timer_lock = asyncio.Lock()
         self.can_claim = False
         self.can_react_to_kakera = False
         self.rolls_left = 0
@@ -31,16 +33,17 @@ class MudaeTimerMixin:
         is_mudae_timer_list_msg = "=> $tuarrange" in clean_msg
         return is_my_message and is_mudae_timer_list_msg
 
-    def update_timer(self, msg: discord.Message):
-        clean_msg = discord.utils.remove_markdown(msg.content)
+    async def update_timer(self, msg: discord.Message):
+        async with self.timer_lock:
+            clean_msg = discord.utils.remove_markdown(msg.content)
 
-        claim_pattern = re.search(r"you (can|can\'t) claim", clean_msg)
-        self.can_claim = bool(claim_pattern and claim_pattern.group(1) == "can")
+            claim_pattern = re.search(r"you (can|can\'t) claim", clean_msg)
+            self.can_claim = bool(claim_pattern and claim_pattern.group(1) == "can")
 
-        rolls_pattern = re.search(r"You have (\d+) rolls left", clean_msg)
-        self.rolls_left = bool(rolls_pattern and int(rolls_pattern.group(1)))
+            rolls_pattern = re.search(r"You have (\d+) rolls left", clean_msg)
+            self.rolls_left = bool(rolls_pattern and int(rolls_pattern.group(1)))
 
-        kakera_pattern = re.search(r"You (can|can\'t) react to kakera", clean_msg)
-        self.can_react_to_kakera = bool(
-            kakera_pattern and kakera_pattern.group(1) == "can"
-        )
+            kakera_pattern = re.search(r"You (can|can\'t) react to kakera", clean_msg)
+            self.can_react_to_kakera = bool(
+                kakera_pattern and kakera_pattern.group(1) == "can"
+            )

@@ -23,10 +23,10 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         self.send_tu_task: asyncio.Task[None] | None = None
         self.kakera_react_task: asyncio.Task[None] | None = None
 
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.INFO)
         logger.info("Initialization Complete")
 
-    async def on_ready(self):
+    async def on_ready(self) -> None:
         logger.info(f"Client is Ready. Using the following config: {self.config}")
         mudae_channel = self.get_channel(self.config.discord.channelId)
         if not mudae_channel:
@@ -45,7 +45,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         if self.is_mudae_timer_list_msg(
             msg=message, user=self.user, config=self.config
         ):
-            self.update_timer(msg=message)
+            await self.update_timer(msg=message)
             logger.info("Handled a Mudae Timer List Message ($tu)")
         elif self.is_roll_command(msg=message):
             await self.enqueue_roll_command(msg=message, config=self.config)
@@ -72,20 +72,27 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
     @tasks.loop(
         time=[time(hour=hour, minute=15, tzinfo=timezone.utc) for hour in range(24)]
     )
-    async def send_tu(self):
-        logger.debug("Send $tu Heartbeat Start")
+    async def send_tu(self) -> None:
         async with self.mode_lock:
             await self.__send_tu()
-        logger.debug("Send $tu Heartbeat End")
+    
+    @tasks.loop(seconds=1.0)
+    async def roll(self) -> None:
+        if not self.user:
+            logger.warning("[ROLL] Roll not processed: User is not logged in")
+            return
+        async with self.mode_lock:
+            async with self.timer_lock:
+                if not self.can_claim:
+                    logger.debug("[ROLL] Roll not processed: Cannot Claim")
+                while self.rolls_left > 0:
+                    await self.mudae_channel.send(self.config.mudae.roll.command)
+                    await self.__send_tu()
 
     @tasks.loop(seconds=1.0)
-    async def claim(self):
-        logger.debug("Claim heartbeat start")
+    async def claim(self) -> None:
         if not self.user:
-            logger.debug("Claim heartbeat end because: Not Logged In")
-            return
-        if not self.can_claim:
-            logger.debug("Claim heartbeat end because: Cannot Claim")
+            logger.warning("[CLAIM] Claim not processed: User is not logged in")
             return
         async with self.mode_lock:
             async with self.claimable_roll_lock:
@@ -93,7 +100,6 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                 while claimable_count != 0:
                     claimable_roll = self.claimable_roll_queue.pop(0)
                     claimable_count = len(self.claimable_roll_queue)
-                    logger.debug(f"[CLAIM] Count: {claimable_count}")
 
                     character_in_snipelist = (
                         claimable_roll.character in self.config.mudae.snipe.character
@@ -102,29 +108,37 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                         claimable_roll.character in self.config.mudae.wish.character
                     )
                     roll_is_mine = claimable_roll.author.id == self.user.id
+
                     logger.info(
-                        f"[CLAIM] {claimable_roll.character} from {claimable_roll.series} ({character_in_snipelist}, {character_in_wishlist}, {roll_is_mine})"
+                        f"[CLAIM] {claimable_roll.character} from {claimable_roll.series} ({character_in_snipelist}, {character_in_wishlist}, {roll_is_mine}, {claimable_count})"
                     )
 
+                    if not self.can_claim:
+                        logger.info(
+                            "[CLAIM] Claim not processed: User is not eligible to claim"
+                        )
+                        continue
+
                     if character_in_snipelist:
+                        logger.info(
+                            f"[CLAIM] Sniping {claimable_roll.character} from {claimable_roll.author.display_name}"
+                        )
                         await claimable_roll.claim()
                         await self.__send_tu()
                         continue
 
                     if character_in_wishlist and roll_is_mine:
+                        logger.info(
+                            f"[CLAIM] Claiming {claimable_roll.character} ({claimable_roll.series})"
+                        )
                         await claimable_roll.claim()
                         await self.__send_tu()
                         continue
-        logger.debug("Claim heartbeat end normally")
-    
+
     @tasks.loop(seconds=1.0)
-    async def kakera_react(self):
-        logger.debug("Kakera heartbeat start")
+    async def kakera_react(self) -> None:
         if not self.user:
-            logger.debug("Kakera heartbeat end because: Not Logged In")
-            return
-        if not self.can_react_to_kakera:
-            logger.debug("Kakera heartbeat end because: Cannot React to Kakera")
+            logger.warning("[KAKERA] Kakera not processed: User is not logged in")
             return
         async with self.mode_lock:
             async with self.kakera_reactable_roll_lock:
@@ -132,20 +146,22 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                 while kakera_reactable_count != 0:
                     claimable_roll = self.kakera_reactable_roll_queue.pop(0)
                     kakera_reactable_count = len(self.kakera_reactable_roll_queue)
-                    logger.debug(f"[CLAIM] Count: {kakera_reactable_count}")
 
                     roll_is_mine = claimable_roll.author.id == self.user.id
                     logger.info(
-                        f"[KAKERA] {claimable_roll.character} from {claimable_roll.series} ({roll_is_mine})"
+                        f"[KAKERA] {claimable_roll.character} from {claimable_roll.series} ({roll_is_mine}, {kakera_reactable_count})"
                     )
 
+                    if not self.can_react_to_kakera:
+                        logger.warning("[KAKERA] Kakera not processed: Cannot react to Kakera")
+                        return
+
                     if roll_is_mine:
+                        logger.warning(f"[KAKERA] Kakera React to {claimable_roll.character}")
                         await claimable_roll.claim()
                         await self.__send_tu()
                         continue
 
-        logger.debug("Kakera heartbeat end normally")
-
-    async def __send_tu(self):
+    async def __send_tu(self) -> None:
         logger.info("Sending $tu")
         await self.mudae_channel.send("$tu")

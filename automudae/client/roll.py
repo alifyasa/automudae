@@ -26,21 +26,24 @@ class Roll:
         assert series_match, embed.description
         self.series = str(series_match.group(1))
 
-        kakera_match = re.search(r"\*\*(\d+)\*\*", embed.description)
+        kakera_match = re.search(r"\*\*([\d,]+)\*\*", embed.description)
         assert kakera_match, embed.description
-        self.kakera = int(kakera_match.group(1))
+        self.kakera = int(kakera_match.group(1).replace(",", ""))
 
-    async def claim(self):
+    async def claim(self) -> None:
         await self.msg.add_reaction("❤️")
-    
-    async def kakera_react(self):
-        if not self.msg.components: return False
+
+    async def kakera_react(self) -> None:
+        if not self.msg.components:
+            return
         for component in self.msg.components:
-            if component.type != discord.ComponentType.button: continue
-            if not component.emoji: continue
-            if "kakera" not in component.emoji.name: continue
+            if component.type != discord.ComponentType.button:
+                continue
+            if not component.emoji:
+                continue
+            if "kakera" not in component.emoji.name:
+                continue
             await component.click()
-        return False
 
 
 logger = logging.getLogger(__name__)
@@ -74,7 +77,7 @@ class MudaeRollMixin:
         clean_msg = discord.utils.remove_markdown(msg.content)
         return "the roulette is limited" in clean_msg
 
-    async def dequeue_roll_command(self):
+    async def dequeue_roll_command(self) -> discord.User | discord.Member:
         async with self.roll_command_lock:
             return self.roll_command_queue.pop(0)
 
@@ -99,12 +102,20 @@ class MudaeRollMixin:
             return roll
 
     def is_kakera_reactable_roll(self, msg: discord.Message):
-        if not msg.components: return False
+        if not msg.components:
+            return False
         for component in msg.components:
-            if component.type != discord.ComponentType.button: continue
-            if not component.emoji: continue
-            logger.info(f"Encountered Message with Emoji Component {component.emoji.name}")
-            return "kakera" not in component.emoji.name
+            if not isinstance(component, discord.ActionRow):
+                continue
+            for child in component.children:
+                if not isinstance(child, discord.Button):
+                    continue
+                if not child.emoji:
+                    continue
+                logger.info(
+                    f"Encountered Message with Emoji Component {child.emoji.name}"
+                )
+                return "kakera" in child.emoji.name
         return False
 
     async def enqueue_kakera_reactable_roll(self, msg: discord.Message):
