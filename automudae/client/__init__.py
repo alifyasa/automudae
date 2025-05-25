@@ -61,7 +61,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         elif self.is_claimable_roll(msg=message):
             roll_result = await self.enqueue_claimable_roll(msg=message)
             logger.info(
-                f"[QUEUE] {roll_result.author.display_name} => {roll_result.character} from {roll_result.series} @{roll_result.kakera} Kakera"
+                f"[QUEUE] [Character: {roll_result.character}] [Series: {roll_result.series}] [Kakera: {roll_result.kakera}] [User: {roll_result.author.display_name}]"
             )
         elif self.is_kakera_reactable_roll(msg=message):
             roll_result = await self.enqueue_kakera_reactable_roll(msg=message)
@@ -110,7 +110,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     roll_is_mine = claimable_roll.author.id == self.user.id
 
                     logger.info(
-                        f"[CLAIM] {claimable_roll.character} from {claimable_roll.series} ({character_in_snipelist}, {character_in_wishlist}, {roll_is_mine}, {claimable_count})"
+                        f"[CLAIM] [Character: {claimable_roll.character}] [Series: {claimable_roll.series}] ({character_in_snipelist}, {character_in_wishlist}, {roll_is_mine}, {claimable_count})"
                     )
 
                     if not self.can_claim:
