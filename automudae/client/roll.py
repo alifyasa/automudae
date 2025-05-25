@@ -32,6 +32,15 @@ class Roll:
 
     async def claim(self):
         await self.msg.add_reaction("❤️")
+    
+    async def kakera_react(self):
+        if not self.msg.components: return False
+        for component in self.msg.components:
+            if component.type != discord.ComponentType.button: continue
+            if not component.emoji: continue
+            if "kakera" not in component.emoji.name: continue
+            await component.click()
+        return False
 
 
 logger = logging.getLogger(__name__)
@@ -90,12 +99,13 @@ class MudaeRollMixin:
             return roll
 
     def is_kakera_reactable_roll(self, msg: discord.Message):
-        if len(msg.embeds) == 0:
-            return False
-        embed = msg.embeds[0]
-        if not embed.footer.text:
-            return False
-        return "Belongs to" in embed.footer.text
+        if not msg.components: return False
+        for component in msg.components:
+            if component.type != discord.ComponentType.button: continue
+            if not component.emoji: continue
+            logger.info(f"Encountered Message with Emoji Component {component.emoji.name}")
+            return "kakera" not in component.emoji.name
+        return False
 
     async def enqueue_kakera_reactable_roll(self, msg: discord.Message):
         async with self.kakera_reactable_roll_lock:

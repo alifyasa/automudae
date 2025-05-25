@@ -21,8 +21,9 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
 
         self.claim_task: asyncio.Task[None] | None = None
         self.send_tu_task: asyncio.Task[None] | None = None
+        self.kakera_react_task: asyncio.Task[None] | None = None
 
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
         logger.info("Initialization Complete")
 
     async def on_ready(self):
@@ -37,6 +38,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
 
         self.claim_task = self.claim.start()
         self.send_tu_task = self.send_tu.start()
+        self.kakera_react_task = self.kakera_react.start()
 
     async def on_message(self, message: discord.Message):
         logger.debug("Handling a Message")
@@ -61,13 +63,11 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             logger.info(
                 f"[QUEUE] {roll_result.author.display_name} => {roll_result.character} from {roll_result.series} @{roll_result.kakera} Kakera"
             )
-        else:
-            logger.debug(f"Reactions: {message.reactions}")
-        # elif self.is_kakera_reactable_roll(msg=message):
-        #     roll_result = await self.enqueue_kakera_reactable_roll(msg=message)
-        #     logger.info(
-        #         f"KAKERA [{roll_result.author.display_name}] {roll_result.character} from {roll_result.series} @{roll_result.kakera} Kakera"
-        #     )
+        elif self.is_kakera_reactable_roll(msg=message):
+            roll_result = await self.enqueue_kakera_reactable_roll(msg=message)
+            logger.info(
+                f"KAKERA [{roll_result.author.display_name}] {roll_result.character} from {roll_result.series} @{roll_result.kakera} Kakera"
+            )
 
     @tasks.loop(
         time=[time(hour=hour, minute=15, tzinfo=timezone.utc) for hour in range(24)]
@@ -116,6 +116,35 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                         await self.__send_tu()
                         continue
         logger.debug("Claim heartbeat end normally")
+    
+    @tasks.loop(seconds=1.0)
+    async def kakera_react(self):
+        logger.debug("Kakera heartbeat start")
+        if not self.user:
+            logger.debug("Kakera heartbeat end because: Not Logged In")
+            return
+        if not self.can_react_to_kakera:
+            logger.debug("Kakera heartbeat end because: Cannot React to Kakera")
+            return
+        async with self.mode_lock:
+            async with self.kakera_reactable_roll_lock:
+                kakera_reactable_count = len(self.kakera_reactable_roll_queue)
+                while kakera_reactable_count != 0:
+                    claimable_roll = self.kakera_reactable_roll_queue.pop(0)
+                    kakera_reactable_count = len(self.kakera_reactable_roll_queue)
+                    logger.debug(f"[CLAIM] Count: {kakera_reactable_count}")
+
+                    roll_is_mine = claimable_roll.author.id == self.user.id
+                    logger.info(
+                        f"[KAKERA] {claimable_roll.character} from {claimable_roll.series} ({roll_is_mine})"
+                    )
+
+                    if roll_is_mine:
+                        await claimable_roll.claim()
+                        await self.__send_tu()
+                        continue
+
+        logger.debug("Kakera heartbeat end normally")
 
     async def __send_tu(self):
         logger.info("Sending $tu")
