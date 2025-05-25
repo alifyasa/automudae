@@ -94,9 +94,11 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             if self.rolls_left <= 0:
                 logger.debug("[ROLL] Roll not processed: No Rolls Left")
                 return
+
             await self.mudae_channel.send(self.config.mudae.roll.command)
             self.rolls_left = self.rolls_left - 1
-            if self.rolls_left <= 1:
+
+            if self.rolls_left <= 0:
                 await asyncio.sleep(1.5)
                 await self.__send_tu()
 
