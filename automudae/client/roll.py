@@ -35,7 +35,7 @@ class Roll:
 
     def get_kakera_react_button(self) -> discord.Button | None:
         if not self.msg.components:
-            return
+            return None
         for component in self.msg.components:
             if not isinstance(component, discord.ActionRow):
                 continue
@@ -47,7 +47,7 @@ class Roll:
                 if "kakera" not in child.emoji.name:
                     continue
                 return child
-            return
+        return None
 
     async def kakera_react(self) -> None:
         button = self.get_kakera_react_button()
