@@ -48,17 +48,17 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             msg=message, user=self.user, config=self.config
         ):
             await self.update_timer(msg=message)
-            logger.info("Handled a Mudae Timer List Message ($tu)")
+            logger.debug("Handled a Mudae Timer List Message ($tu)")
         elif self.is_roll_command(msg=message):
             await self.enqueue_roll_command(msg=message, config=self.config)
-            logger.info(f"Handled a Roll Command by {message.author.display_name}")
+            logger.debug(f"Handled a Roll Command by {message.author.display_name}")
         elif self.is_failed_roll_command(msg=message):
             roll_command_author: discord.user.BaseUser | discord.Member
             if message.interaction:
                 roll_command_author = message.interaction.user
             else:
                 roll_command_author = await self.dequeue_roll_command()
-            logger.info(
+            logger.debug(
                 f"Handled a Failed Roll Command by {roll_command_author.display_name}"
             )
         elif self.is_claimable_roll(msg=message):
@@ -204,5 +204,5 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     continue
 
     async def __send_tu(self) -> None:
-        logger.info("Sending $tu")
+        logger.debug("Sending $tu")
         await self.mudae_channel.send("$tu")
