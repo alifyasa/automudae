@@ -93,12 +93,8 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                 return
 
             await self.mudae_channel.send(self.config.mudae.roll.command)
-            self.rolls_left -= 1
-
-            # On last roll, send $tu
-            if self.rolls_left == 1:
-                await asyncio.sleep(2.5)
-                await self.__send_tu()
+            await asyncio.sleep(2.5)
+            await self.__send_tu()
 
     @tasks.loop(seconds=1.0)
     async def claim(self) -> None:
@@ -145,7 +141,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     character_qualifies or series_qualifies or kakera_qualifies
                 ):
                     logger.info(
-                        f"[CLAIM] Claiming {claimable_roll.character} ({claimable_roll.series})"
+                        f"[CLAIM] Early Claiming {claimable_roll.character} ({claimable_roll.series})"
                     )
                     await claimable_roll.claim()
                     await self.__send_tu()
@@ -167,7 +163,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     and (character_qualifies or series_qualifies or kakera_qualifies)
                 ):
                     logger.info(
-                        f"[CLAIM] Claiming {claimable_roll.character} ({claimable_roll.series})"
+                        f"[CLAIM] Efficient Claiming {claimable_roll.character} ({claimable_roll.series})"
                     )
                     await claimable_roll.claim()
                     await self.__send_tu()
