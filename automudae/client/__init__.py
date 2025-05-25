@@ -84,100 +84,128 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         if not self.user:
             logger.warning("[ROLL] Roll not processed: User is not logged in")
             return
-        async with self.mode_lock:
-            async with self.timer_lock:
-                if not self.can_claim:
-                    logger.debug("[ROLL] Roll not processed: Cannot Claim")
-                    return
-                if self.rolls_left <= 0:
-                    logger.debug("[ROLL] Roll not processed: No Rolls Left")
-                    return
+        async with self.mode_lock, self.timer_lock:
+            if not self.can_claim:
+                logger.debug("[ROLL] Roll not processed: Cannot Claim")
+                return
+            if self.rolls_left <= 0:
+                logger.debug("[ROLL] Roll not processed: No Rolls Left")
+                return
 
-                await self.mudae_channel.send(self.config.mudae.roll.command)
+            await self.mudae_channel.send(self.config.mudae.roll.command)
+            self.rolls_left -= 1
 
-                # On last roll, send $tu
-                if self.rolls_left == 1:
-                    await asyncio.sleep(2.5)
-                    await self.__send_tu()
+            # On last roll, send $tu
+            if self.rolls_left == 1:
+                await asyncio.sleep(2.5)
+                await self.__send_tu()
 
     @tasks.loop(seconds=1.0)
     async def claim(self) -> None:
         if not self.user:
             logger.warning("[CLAIM] Claim not processed: User is not logged in")
             return
-        async with self.mode_lock:
-            async with self.claimable_roll_lock:
+        async with self.mode_lock, self.claimable_roll_lock, self.timer_lock:
+            claimable_count = len(self.claimable_roll_queue)
+            while claimable_count != 0:
+                claimable_roll = self.claimable_roll_queue.pop(0)
                 claimable_count = len(self.claimable_roll_queue)
-                while claimable_count != 0:
-                    claimable_roll = self.claimable_roll_queue.pop(0)
-                    claimable_count = len(self.claimable_roll_queue)
 
-                    character_in_snipelist = (
-                        claimable_roll.character
-                        in self.config.mudae.claim.snipe.character
-                    )
-                    character_in_earlyclaimlist = (
-                        claimable_roll.character
-                        in self.config.mudae.claim.earlyClaim.character
-                    )
-                    roll_is_mine = claimable_roll.author.id == self.user.id
-
-                    if not self.can_claim:
-                        logger.info(
-                            "[CLAIM] Claim not processed: User is not eligible to claim"
-                        )
-                        continue
-
-                    if character_in_snipelist:
-                        logger.info(
-                            f"[CLAIM] Sniping {claimable_roll.character} from {claimable_roll.author.display_name}"
-                        )
-                        await claimable_roll.claim()
-                        await self.__send_tu()
-                        continue
-
-                    if character_in_earlyclaimlist and roll_is_mine:
-                        logger.info(
-                            f"[CLAIM] Claiming {claimable_roll.character} ({claimable_roll.series})"
-                        )
-                        await claimable_roll.claim()
-                        await self.__send_tu()
-                        continue
-
+                if not self.can_claim:
                     logger.info(
-                        f"[CLAIM] Not claiming {claimable_roll.character} ({character_in_snipelist}, {character_in_earlyclaimlist}, {roll_is_mine}, {claimable_count})"
+                        "[CLAIM] Claim not processed: User is not eligible to claim"
                     )
+                    continue
+
+                snipe_criteria = self.config.mudae.claim.snipe
+                character_qualifies = (
+                    claimable_roll.character in snipe_criteria.character
+                )
+                series_qualifies = claimable_roll.series in snipe_criteria.series
+                kakera_qualifies = claimable_roll.kakera >= snipe_criteria.minKakera
+                if character_qualifies or series_qualifies or kakera_qualifies:
+                    logger.info(
+                        f"[CLAIM] Sniping {claimable_roll.character} from {claimable_roll.author.display_name}"
+                    )
+                    await claimable_roll.claim()
+                    await self.__send_tu()
+                    continue
+
+                roll_is_mine = claimable_roll.author.id == self.user.id
+
+                early_claim_criteria = self.config.mudae.claim.earlyClaim
+                character_qualifies = (
+                    claimable_roll.character in early_claim_criteria.character
+                )
+                series_qualifies = claimable_roll.series in early_claim_criteria.series
+                kakera_qualifies = (
+                    claimable_roll.kakera >= early_claim_criteria.minKakera
+                )
+                if roll_is_mine and (
+                    character_qualifies or series_qualifies or kakera_qualifies
+                ):
+                    logger.info(
+                        f"[CLAIM] Claiming {claimable_roll.character} ({claimable_roll.series})"
+                    )
+                    await claimable_roll.claim()
+                    await self.__send_tu()
+                    continue
+
+                efficient_claim_criteria = self.config.mudae.claim.efficientClaim
+                character_qualifies = (
+                    claimable_roll.character in efficient_claim_criteria.character
+                )
+                series_qualifies = (
+                    claimable_roll.series in efficient_claim_criteria.series
+                )
+                kakera_qualifies = (
+                    claimable_roll.kakera >= efficient_claim_criteria.minKakera
+                )
+                if (
+                    roll_is_mine
+                    and self.next_hour_is_claim_reset
+                    and (character_qualifies or series_qualifies or kakera_qualifies)
+                ):
+                    logger.info(
+                        f"[CLAIM] Claiming {claimable_roll.character} ({claimable_roll.series})"
+                    )
+                    await claimable_roll.claim()
+                    await self.__send_tu()
+                    continue
+
+                logger.info(
+                    f"[CLAIM] Not claiming {claimable_roll.character} ({claimable_roll.series})"
+                )
 
     @tasks.loop(seconds=1.0)
     async def kakera_react(self) -> None:
         if not self.user:
             logger.warning("[KAKERA] Kakera not processed: User is not logged in")
             return
-        async with self.mode_lock:
-            async with self.kakera_reactable_roll_lock:
+        async with self.mode_lock, self.kakera_reactable_roll_lock:
+            kakera_reactable_count = len(self.kakera_reactable_roll_queue)
+            while kakera_reactable_count != 0:
+                claimable_roll = self.kakera_reactable_roll_queue.pop(0)
                 kakera_reactable_count = len(self.kakera_reactable_roll_queue)
-                while kakera_reactable_count != 0:
-                    claimable_roll = self.kakera_reactable_roll_queue.pop(0)
-                    kakera_reactable_count = len(self.kakera_reactable_roll_queue)
 
-                    roll_is_mine = claimable_roll.author.id == self.user.id
-                    logger.info(
-                        f"[KAKERA] {claimable_roll.character} from {claimable_roll.series} ({roll_is_mine}, {kakera_reactable_count})"
+                roll_is_mine = claimable_roll.author.id == self.user.id
+                logger.info(
+                    f"[KAKERA] {claimable_roll.character} from {claimable_roll.series} ({roll_is_mine}, {kakera_reactable_count})"
+                )
+
+                if not self.can_react_to_kakera:
+                    logger.warning(
+                        "[KAKERA] Kakera not processed: Cannot react to Kakera"
                     )
+                    continue
 
-                    if not self.can_react_to_kakera:
-                        logger.warning(
-                            "[KAKERA] Kakera not processed: Cannot react to Kakera"
-                        )
-                        return
-
-                    if roll_is_mine:
-                        logger.warning(
-                            f"[KAKERA] Kakera React to {claimable_roll.character}"
-                        )
-                        await claimable_roll.kakera_react()
-                        await self.__send_tu()
-                        continue
+                if roll_is_mine:
+                    logger.warning(
+                        f"[KAKERA] Kakera React to {claimable_roll.character}"
+                    )
+                    await claimable_roll.kakera_react()
+                    await self.__send_tu()
+                    continue
 
     async def __send_tu(self) -> None:
         logger.info("Sending $tu")

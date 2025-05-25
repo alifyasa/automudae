@@ -16,6 +16,7 @@ class MudaeTimerMixin:
         self.can_claim = False
         self.can_react_to_kakera = False
         self.rolls_left = 0
+        self.next_hour_is_claim_reset = False
         logger.info("Initialization Complete")
 
     def is_mudae_timer_list_msg(
@@ -47,3 +48,16 @@ class MudaeTimerMixin:
             self.can_react_to_kakera = bool(
                 kakera_pattern and kakera_pattern.group(1) == "can"
             )
+
+            claim_reset_pattern = re.search(
+                r"(?:(\d+)\s*h)?\s*(?:(\d+)\s*min)?", clean_msg
+            )
+            assert claim_reset_pattern
+            claim_reset_hours = (
+                int(claim_reset_pattern.group(1)) if claim_reset_pattern.group(1) else 0
+            )
+            claim_reset_minutes = (
+                int(claim_reset_pattern.group(2)) if claim_reset_pattern.group(2) else 0
+            )
+            next_claim_reset_in_minutes = claim_reset_hours * 60 + claim_reset_minutes
+            self.next_hour_is_claim_reset = next_claim_reset_in_minutes <= 60
