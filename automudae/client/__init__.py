@@ -68,8 +68,11 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             )
         elif self.is_kakera_reactable_roll(msg=message):
             roll_result = await self.enqueue_kakera_reactable_roll(msg=message)
+            kakera_react_button = roll_result.get_kakera_react_button()
+            assert kakera_react_button
+            assert kakera_react_button.emoji
             logger.info(
-                f"KAKERA [{roll_result.author.display_name}] {roll_result.character} from {roll_result.series} @{roll_result.kakera} Kakera"
+                f"[QUEUE] [Kakera: {kakera_react_button.emoji.name}] [User: {roll_result.author.display_name}]"
             )
 
     @tasks.loop(
@@ -196,7 +199,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     continue
 
                 if roll_is_mine:
-                    logger.warning(
+                    logger.info(
                         f"[KAKERA] Kakera React to {claimable_roll.character}"
                     )
                     await claimable_roll.kakera_react()

@@ -32,8 +32,8 @@ class Roll:
 
     async def claim(self) -> None:
         await self.msg.add_reaction("❤️")
-
-    async def kakera_react(self) -> None:
+    
+    def get_kakera_react_button(self) -> discord.Button | None:
         if not self.msg.components:
             return
         for component in self.msg.components:
@@ -46,9 +46,14 @@ class Roll:
                     continue
                 if "kakera" not in child.emoji.name:
                     continue
-                await child.click()
-                logger.info(f"Clicked Kakera React on {self.character} ({self.series})")
-        return
+                return child
+            return
+
+    async def kakera_react(self) -> None:
+        button = self.get_kakera_react_button()
+        if not button:
+            return
+        await button.click()
 
 
 logger = logging.getLogger(__name__)
