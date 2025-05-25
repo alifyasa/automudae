@@ -50,7 +50,7 @@ class MudaeTimerMixin:
             )
 
             claim_reset_pattern = re.search(
-                r"(?:(\d+)\s*h)?\s*(?:(\d+)\s*min)?", clean_msg
+                r"(?:The next claim reset is in|you can't claim for another)\s+(?:(\d+)h\s*)?(\d+)\s*min", clean_msg
             )
             assert claim_reset_pattern
             claim_reset_hours = (
@@ -61,3 +61,4 @@ class MudaeTimerMixin:
             )
             next_claim_reset_in_minutes = claim_reset_hours * 60 + claim_reset_minutes
             self.next_hour_is_claim_reset = next_claim_reset_in_minutes <= 60
+            logger.info(f"[Claim: {self.can_claim}] [Kakera React: {self.can_react_to_kakera}] [Rolls: {self.rolls_left}] [NextHourClaimReset: {self.next_hour_is_claim_reset}]")
