@@ -85,9 +85,13 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             async with self.timer_lock:
                 if not self.can_claim:
                     logger.debug("[ROLL] Roll not processed: Cannot Claim")
-                while self.rolls_left > 0:
-                    await self.mudae_channel.send(self.config.mudae.roll.command)
-                    await self.__send_tu()
+                    return
+                if self.rolls_left <= 0:
+                    logger.debug("[ROLL] Roll not processed: No Rolls Left")
+                    return
+
+                await self.mudae_channel.send(self.config.mudae.roll.command)
+                await self.__send_tu()
 
     @tasks.loop(seconds=1.0)
     async def claim(self) -> None:
@@ -108,10 +112,6 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                         claimable_roll.character in self.config.mudae.wish.character
                     )
                     roll_is_mine = claimable_roll.author.id == self.user.id
-
-                    logger.info(
-                        f"[CLAIM] [Character: {claimable_roll.character}] [Series: {claimable_roll.series}] ({character_in_snipelist}, {character_in_wishlist}, {roll_is_mine}, {claimable_count})"
-                    )
 
                     if not self.can_claim:
                         logger.info(
@@ -134,6 +134,10 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                         await claimable_roll.claim()
                         await self.__send_tu()
                         continue
+
+                    logger.info(
+                        f"[CLAIM] Not claiming {claimable_roll.character} ({character_in_snipelist}, {character_in_wishlist}, {roll_is_mine}, {claimable_count})"
+                    )
 
     @tasks.loop(seconds=1.0)
     async def kakera_react(self) -> None:
