@@ -1,7 +1,7 @@
-
 from automudae.client import AutoMudaeClient
 from automudae.config.v1 import get_config
 from automudae.logging import handler
+
 
 def main():
     config = get_config()
