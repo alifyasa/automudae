@@ -124,11 +124,12 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
                     )
                     continue
 
+                wished_by_me = claimable_roll.is_wished_by(self.user)
                 snipe_criteria = self.config.mudae.claim.snipe
                 roll_qualifies = claimable_roll.is_qualified_using_criteria(
                     snipe_criteria
                 )
-                if roll_qualifies:
+                if roll_qualifies or wished_by_me:
                     logger.info(
                         f"[CLAIM] Sniping {claimable_roll.character} from {claimable_roll.author.display_name}"
                     )

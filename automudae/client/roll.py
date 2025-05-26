@@ -12,7 +12,6 @@ class Roll:
         self,
         msg: discord.Message,
         author: discord.User | discord.Member | discord.user.BaseUser,
-        is_wishlisted: bool = False,
     ) -> None:
         self.msg = msg
         self.author = author
@@ -31,10 +30,10 @@ class Roll:
         assert kakera_match, embed.description
         self.kakera = int(kakera_match.group(1).replace(",", ""))
 
-        self.is_wishlisted = is_wishlisted
+        self.is_wished = "Wished by" in self.msg.content
 
     async def claim(self) -> None:
-        if not self.is_wishlisted:
+        if not self.is_wished:
             await self.msg.add_reaction("❤️")
         else:
             await self.click()
@@ -47,6 +46,9 @@ class Roll:
         if not button:
             return
         await button.click()
+    
+    def is_wished_by(self, user: discord.ClientUser) -> bool:
+        return f"Wished by <@{user.id}>" == self.msg.content
 
     def get_action_button(self, emoji_name: str = "") -> discord.Button | None:
         if not self.msg.components:
