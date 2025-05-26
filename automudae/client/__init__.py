@@ -76,9 +76,6 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             logger.info(
                 f"[QUEUE] [Kakera: {kakera_react_button.emoji.name}] [User: {roll_result.author.display_name}]"
             )
-        elif self.is_wishlisted_roll(msg=message):
-            roll_result = await self.enqueue_claimable_roll(msg=message)
-            logger.info(f"[QUEUE] [Wishlisted Character: {roll_result.character}]")
 
     @tasks.loop(
         time=[
