@@ -84,7 +84,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
         async with self.mode_lock:
             await self.__send_tu()
 
-    @tasks.loop(seconds=2)
+    @tasks.loop(seconds=3)
     async def roll(self) -> None:
         if not self.user:
             logger.warning("[ROLL] Roll not processed: User is not logged in")
@@ -101,7 +101,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             self.rolls_left = self.rolls_left - 1
 
             if self.rolls_left <= 0:
-                await asyncio.sleep(1)
+                await asyncio.sleep(1.5)
                 await self.__send_tu()
 
     @tasks.loop(seconds=1.0)
