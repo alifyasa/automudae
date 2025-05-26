@@ -12,6 +12,7 @@ class Roll:
         self,
         msg: discord.Message,
         author: discord.User | discord.Member | discord.user.BaseUser,
+        is_wishlisted: bool = False,
     ) -> None:
         self.msg = msg
         self.author = author
@@ -30,10 +31,15 @@ class Roll:
         assert kakera_match, embed.description
         self.kakera = int(kakera_match.group(1).replace(",", ""))
 
-    async def claim(self) -> None:
-        await self.msg.add_reaction("❤️")
+        self.is_wishlisted = is_wishlisted
 
-    def get_kakera_react_button(self) -> discord.Button | None:
+    async def claim(self) -> None:
+        if not self.is_wishlisted:
+            await self.msg.add_reaction("❤️")
+        else:
+            await self.wishlist_claim()
+
+    def get_action_button(self, emoji_name: str) -> discord.Button | None:
         if not self.msg.components:
             return None
         for component in self.msg.components:
@@ -44,13 +50,19 @@ class Roll:
                     continue
                 if not child.emoji:
                     continue
-                if "kakera" not in child.emoji.name:
+                if emoji_name not in child.emoji.name:
                     continue
                 return child
         return None
 
     async def kakera_react(self) -> None:
-        button = self.get_kakera_react_button()
+        button = self.get_action_button("kakera")
+        if not button:
+            return
+        await button.click()
+
+    async def wishlist_claim(self) -> None:
+        button = self.get_action_button("💓")
         if not button:
             return
         await button.click()
@@ -146,3 +158,20 @@ class MudaeRollMixin:
             roll = Roll(msg=msg, author=author)
             self.kakera_reactable_roll_queue.append(roll)
             return roll
+
+    def is_wishlisted_roll(self, msg: discord.Message):
+        if not msg.components:
+            return False
+        for component in msg.components:
+            if not isinstance(component, discord.ActionRow):
+                continue
+            for child in component.children:
+                if not isinstance(child, discord.Button):
+                    continue
+                if not child.emoji:
+                    continue
+                logger.info(
+                    f"Encountered Message with Emoji Component {child.emoji.name}"
+                )
+                return "💓" in child.emoji.name
+        return False

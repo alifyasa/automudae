@@ -70,15 +70,21 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             )
         elif self.is_kakera_reactable_roll(msg=message):
             roll_result = await self.enqueue_kakera_reactable_roll(msg=message)
-            kakera_react_button = roll_result.get_kakera_react_button()
+            kakera_react_button = roll_result.get_action_button("kakera")
             assert kakera_react_button
             assert kakera_react_button.emoji
             logger.info(
                 f"[QUEUE] [Kakera: {kakera_react_button.emoji.name}] [User: {roll_result.author.display_name}]"
             )
+        elif self.is_wishlisted_roll(msg=message):
+            roll_result = await self.enqueue_claimable_roll(msg=message)
+            logger.info(f"[QUEUE] [Wishlisted Character: {roll_result.character}]")
 
     @tasks.loop(
-        time=[time(hour=hour, minute=23, second=15, tzinfo=timezone.utc) for hour in range(24)]
+        time=[
+            time(hour=hour, minute=23, second=15, tzinfo=timezone.utc)
+            for hour in range(24)
+        ]
     )
     async def send_tu(self) -> None:
         async with self.mode_lock:
