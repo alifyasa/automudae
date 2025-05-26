@@ -8,7 +8,9 @@ COPY requirements.txt .
 
 RUN pip3 install -r requirements.txt
 
+COPY automudae/ ./automudae/
+
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "-m", "automudae"]
+CMD ["python", "-m", "automudae", "-f", "config.yaml"]

@@ -4,6 +4,6 @@ services:
       context: .
     restart: always
     volumes:
-      - .:/app
+      - ./configs/main.yaml:/app/config.yaml
     environment:
       - ENV=development
