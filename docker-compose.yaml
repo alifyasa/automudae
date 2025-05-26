@@ -2,6 +2,7 @@ services:
   automudae:
     build:
       context: .
+    restart: always
     volumes:
       - .:/app
     environment:

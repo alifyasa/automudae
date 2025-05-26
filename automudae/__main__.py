@@ -1,6 +1,7 @@
-from automudae.client import AutoMudaeClient
-from automudae.config.v1 import get_config, Config
 import yaml
+
+from automudae.client import AutoMudaeClient
+from automudae.config.v1 import Config, get_config
 
 
 def main() -> None:

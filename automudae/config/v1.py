@@ -31,7 +31,9 @@ class DiscordConfig(BaseModel):
     mudaeBotId: int
 
     def __repr__(self) -> str:
-        return f"DiscordConfig(token='****', channelId=****, mudaeBotId={self.mudaeBotId})"
+        return (
+            f"DiscordConfig(token='****', channelId=****, mudaeBotId={self.mudaeBotId})"
+        )
 
     def __str__(self) -> str:
         return self.__repr__()
