@@ -78,7 +78,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
             )
 
     @tasks.loop(
-        time=[time(hour=hour, minute=23, second=5, tzinfo=timezone.utc) for hour in range(24)]
+        time=[time(hour=hour, minute=23, second=15, tzinfo=timezone.utc) for hour in range(24)]
     )
     async def send_tu(self) -> None:
         async with self.mode_lock:
