@@ -46,7 +46,7 @@ class Roll:
         if not button:
             return
         await button.click()
-    
+
     def is_wished_by(self, user: discord.ClientUser) -> bool:
         return f"Wished by <@{user.id}>" == self.msg.content
 
@@ -117,7 +117,7 @@ class MudaeRollMixin:
             return False
         if not embed.description:
             return False
-        
+
         reactable = "React with any emoji to claim!" in embed.description
         wished = "Wished by" in msg.content
         return reactable or wished

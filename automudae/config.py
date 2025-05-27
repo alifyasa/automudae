@@ -19,6 +19,7 @@ class ClaimConfig(BaseModel):
 class RollConfig(BaseModel):
     command: Literal["$wg"]
 
+
 class ClaimRule:
     criteria: ClaimCriteria
 
