@@ -29,10 +29,12 @@ class AutoMudaeAgent(discord.Client):
             return
         self.mudae_channel = mudae_channel
 
+        debug_msg_roll_cmd = await self.mudae_channel.fetch_message(1376732497374613585)
         debug_msg = await self.mudae_channel.fetch_message(1376732497894969437)
         if not self.user:
             return
         roll = await MudaeRoll.create(debug_msg, self.user)
+        logger.info((debug_msg.created_at - debug_msg_roll_cmd.created_at).total_seconds())
         logger.info(roll)
 
     async def on_message(self, message: discord.Message) -> None:
