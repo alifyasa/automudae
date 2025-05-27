@@ -4,7 +4,7 @@ import re
 
 import discord
 
-from automudae.config.v1 import Config
+from automudae.config import Config
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ import re
 
 import discord
 
-from automudae.config.v1 import ClaimCriteria, Config
+from automudae.config import ClaimCriteria, Config
 
 
 class Roll:

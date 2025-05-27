@@ -7,7 +7,7 @@ from discord.ext import tasks
 
 from automudae.client.roll import MudaeRollMixin
 from automudae.client.timers import MudaeTimerMixin
-from automudae.config.v1 import Config
+from automudae.config import Config
 
 logger = logging.getLogger(__name__)
 
