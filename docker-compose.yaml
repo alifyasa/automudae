@@ -1,9 +1,0 @@
-services:
-  automudae:
-    build:
-      context: .
-    restart: always
-    volumes:
-      - ./configs/main.yaml:/app/config.yaml
-    environment:
-      - ENV=development
