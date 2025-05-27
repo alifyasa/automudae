@@ -4,7 +4,7 @@ import re
 
 import discord
 
-from automudae.config.v1 import ClaimPreferences, Config
+from automudae.config.v1 import ClaimCriteria, Config
 
 
 class Roll:
@@ -66,7 +66,7 @@ class Roll:
                 return child
         return None
 
-    def is_qualified_using_criteria(self, criteria: ClaimPreferences) -> bool:
+    def is_qualified_using_criteria(self, criteria: ClaimCriteria) -> bool:
         character_qualifies = self.character in criteria.character
         series_qualifies = self.series in criteria.series
         kakera_qualifies = self.kakera >= criteria.minKakera

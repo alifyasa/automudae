@@ -4,20 +4,23 @@ import yaml
 from pydantic import BaseModel
 
 
-class ClaimPreferences(BaseModel):
+class ClaimCriteria(BaseModel):
     character: list[str] = []
     series: list[str] = []
     minKakera: int = 10_000
 
 
 class ClaimConfig(BaseModel):
-    snipe: ClaimPreferences = ClaimPreferences()
-    earlyClaim: ClaimPreferences = ClaimPreferences()
-    lateClaim: ClaimPreferences = ClaimPreferences()
+    snipe: ClaimCriteria = ClaimCriteria()
+    earlyClaim: ClaimCriteria = ClaimCriteria()
+    lateClaim: ClaimCriteria = ClaimCriteria()
 
 
 class RollConfig(BaseModel):
     command: Literal["$wg"]
+
+class ClaimRule:
+    criteria: ClaimCriteria
 
 
 class MudaeConfig(BaseModel):
