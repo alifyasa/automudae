@@ -60,8 +60,8 @@ class MudaeRoll(BaseModel):
         )
 
 
-class MudaeRollQueue(BaseModel):
-    queue: Queue[MudaeRoll] = Field(default_factory=Queue[MudaeRoll])
+class MudaeRolls(BaseModel):
+    rolls: list[MudaeRoll] = Field(default_factory=list[MudaeRoll])
     lock: asyncio.Lock = Field(default_factory=asyncio.Lock)
 
     class Config:
