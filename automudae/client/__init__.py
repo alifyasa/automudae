@@ -79,7 +79,7 @@ class AutoMudaeClient(MudaeTimerMixin, MudaeRollMixin, discord.Client):
 
     @tasks.loop(
         time=[
-            time(hour=hour, minute=21, tzinfo=timezone.utc)
+            time(hour=hour, tzinfo=timezone.utc)
             for hour in range(24)
         ]
     )
