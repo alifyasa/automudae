@@ -2,7 +2,7 @@ import logging
 
 import discord
 from aiolimiter import AsyncLimiter
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 
 from discord.ext import tasks
@@ -128,7 +128,7 @@ class AutoMudaeAgent(discord.Client):
 
         roll = await self.mudae_claimable_rolls.get()
 
-        current_time = datetime.now()
+        current_time = datetime.now(tz=timezone.utc)
         roll_time_elapsed = current_time - roll.message.created_at
         if roll_time_elapsed.total_seconds() >= 30:
             self.mudae_claimable_rolls.task_done()
@@ -198,7 +198,7 @@ class AutoMudaeAgent(discord.Client):
 
         roll = await self.mudae_kakera_rolls.get()
 
-        current_time = datetime.now()
+        current_time = datetime.now(tz=timezone.utc)
         roll_time_elapsed = current_time - roll.message.created_at
         if roll_time_elapsed.total_seconds() >= 30:
             self.mudae_kakera_rolls.task_done()
@@ -235,11 +235,10 @@ class AutoMudaeAgent(discord.Client):
         if self.timer_status.rolls_left <= 0:
             return
 
-        async with self.react_rate_limiter, self.command_rate_limiter:
+        async with self.command_rate_limiter:
             await self.mudae_channel.send(self.config.mudae.roll.command)
-
-        self.timer_status.rolls_left -= 1
+            self.timer_status.rolls_left -= 1
 
         if self.timer_status.rolls_left <= 0:
-            async with self.react_rate_limiter, self.command_rate_limiter:
+            async with self.command_rate_limiter:
                 await self.mudae_channel.send("$tu")

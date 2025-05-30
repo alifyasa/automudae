@@ -4,7 +4,7 @@ services:
       context: .
     restart: always
     volumes:
-      - ./configs/playground.yaml:/app/config.yaml
+      - ./configs/main.yaml:/app/config.yaml
       - ./configs/:/app/configs/
     environment:
       - ENV=development
