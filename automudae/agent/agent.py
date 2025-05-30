@@ -116,7 +116,6 @@ class AutoMudaeAgent(discord.Client):
                 async with self.rate_limiter:
                     await late_claim_best_pick.claim()
                 late_claim_best_pick = None
-                self.mudae_claimable_rolls.task_done()
                 continue
 
             roll = await self.mudae_claimable_rolls.get()
@@ -171,3 +170,5 @@ class AutoMudaeAgent(discord.Client):
                 late_claim_best_pick = roll
                 self.mudae_claimable_rolls.task_done()
                 continue
+
+            self.mudae_claimable_rolls.task_done()
