@@ -37,6 +37,7 @@ class AutoMudaeAgent(discord.Client):
         self.react_rate_limiter = AsyncLimiter(1, 0.25)
         self.command_rate_limiter = AsyncLimiter(1, 1.75)
         self.tasks: list[asyncio.Task[None]] = []
+        self.late_claim_best_pick: MudaeClaimableRoll | None = None
 
         logger.info("AutoMudae Agent Initialization Complete")
 
@@ -105,7 +106,6 @@ class AutoMudaeAgent(discord.Client):
 
     @tasks.loop(seconds=0.25)
     async def claim_loop(self) -> None:
-        late_claim_best_pick: MudaeClaimableRoll | None = None
 
         if not self.user:
             return
@@ -119,11 +119,11 @@ class AutoMudaeAgent(discord.Client):
         if (
             self.mudae_claimable_rolls.empty()
             and self.timer_status.rolls_left == 0
-            and late_claim_best_pick is not None
+            and self.late_claim_best_pick is not None
         ):
             async with self.react_rate_limiter:
-                await late_claim_best_pick.claim()
-            late_claim_best_pick = None
+                await self.late_claim_best_pick.claim()
+            self.late_claim_best_pick = None
             return
 
         roll = await self.mudae_claimable_rolls.get()
@@ -170,16 +170,52 @@ class AutoMudaeAgent(discord.Client):
             self.mudae_claimable_rolls.task_done()
             return
 
-        if late_claim_best_pick is None:
-            late_claim_best_pick = roll
+        if self.late_claim_best_pick is None:
+            self.late_claim_best_pick = roll
             self.mudae_claimable_rolls.task_done()
             return
-        elif roll.kakera_value > late_claim_best_pick.kakera_value:
-            late_claim_best_pick = roll
+        elif roll.kakera_value > self.late_claim_best_pick.kakera_value:
+            self.late_claim_best_pick = roll
             self.mudae_claimable_rolls.task_done()
             return
 
         self.mudae_claimable_rolls.task_done()
+
+    @tasks.loop(seconds=0.25)
+    async def kakera_react_loop(self) -> None:
+
+        if not self.user:
+            return
+
+        if not self.mudae_channel:
+            return
+
+        if not self.timer_status:
+            return
+
+        if not self.timer_status.can_kakera_react:
+            return
+
+        roll = await self.mudae_kakera_rolls.get()
+
+        current_time = datetime.now()
+        roll_time_elapsed = current_time - roll.message.created_at
+        if roll_time_elapsed.total_seconds() >= 30:
+            self.mudae_kakera_rolls.task_done()
+            return
+
+        roll_is_mine = roll.owner.id == self.user.id
+        if not roll_is_mine:
+            self.mudae_kakera_rolls.task_done()
+            return
+
+        async with self.react_rate_limiter:
+            await roll.kakera_react()
+
+        async with self.react_rate_limiter, self.command_rate_limiter:
+            await self.mudae_channel.send("$tu")
+
+        self.mudae_kakera_rolls.task_done()
 
     @tasks.loop(seconds=0.25)
     async def roll_loop(self) -> None:

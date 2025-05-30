@@ -186,6 +186,10 @@ class MudaeKakeraRoll(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    async def kakera_react(self) -> None:
+        for button in self.buttons:
+            await button.click()
+
     @classmethod
     async def create(
         cls, message: discord.Message, roll_commands_queue: Queue[MudaeRollCommand]
