@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 
 class ClaimCriteria(BaseModel):
-    wish = False
+    wish: bool = False
     character: list[str] = Field(default_factory=list[str])
     series: list[str] = Field(default_factory=list[str])
     minKakera: int = 10_000
