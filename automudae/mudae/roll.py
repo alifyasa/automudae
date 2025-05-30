@@ -10,8 +10,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 MUDAE_TIMEOUT_SEC = 0.5
-MudaeRollOwner = discord.User | discord.ClientUser | discord.Member | discord.user.BaseUser
+MudaeRollOwner = (
+    discord.User | discord.ClientUser | discord.Member | discord.user.BaseUser
+)
 MudaeRollCommandType = Literal["$wg", "$wa", "$w", "$wx"]
+
 
 class MudaeRollCommand(BaseModel):
 
@@ -36,16 +39,25 @@ class MudaeRollCommand(BaseModel):
             message=message,
         )
 
+
 MudaeRollCommands = Queue[MudaeRollCommand]
+
 
 class MudaeFailedRollCommand(BaseModel):
     owner: MudaeRollOwner
+
     class Config:
         arbitrary_types_allowed = True
+
     @classmethod
-    async def create(cls, message: discord.Message, roll_commands_queue: MudaeRollCommands):
+    async def create(
+        cls, message: discord.Message, roll_commands_queue: MudaeRollCommands
+    ):
         clean_msg_content = discord.utils.remove_markdown(message.content)
-        if not re.findall(r"(.+), the roulette is limited to (\d+) uses per hour. (\d+) min left.", clean_msg_content):
+        if not re.findall(
+            r"(.+), the roulette is limited to (\d+) uses per hour. (\d+) min left.",
+            clean_msg_content,
+        ):
             return None
         owner: MudaeRollOwner
         if message.interaction:
@@ -54,15 +66,15 @@ class MudaeFailedRollCommand(BaseModel):
             while True:
                 roll_command = await roll_commands_queue.get()
                 try:
-                    reply_interval = (message.created_at - roll_command.message.created_at).total_seconds()
+                    reply_interval = (
+                        message.created_at - roll_command.message.created_at
+                    ).total_seconds()
                     if reply_interval <= MUDAE_TIMEOUT_SEC:
                         break
                 finally:
                     roll_commands_queue.task_done()
             owner = roll_command.owner
-        return MudaeFailedRollCommand(
-            owner=owner
-        )
+        return MudaeFailedRollCommand(owner=owner)
 
 
 class MudaeClaimableRoll(BaseModel):
@@ -78,8 +90,25 @@ class MudaeClaimableRoll(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    async def claim(self) -> None:
+        if not self.is_wished:
+            await self.message.add_reaction("❤️")
+        elif not self.message.components:
+            return None
+        for component in self.message.components:
+            if not isinstance(component, discord.ActionRow):
+                continue
+            for child in component.children:
+                if not isinstance(child, discord.Button):
+                    continue
+                if not child.emoji:
+                    continue
+                await child.click()
+
     @classmethod
-    async def create(cls, message: discord.Message, roll_commands_queue: Queue[MudaeRollCommand]):
+    async def create(
+        cls, message: discord.Message, roll_commands_queue: Queue[MudaeRollCommand]
+    ):
         if not message.embeds:
             logger.debug("Not Mudae Roll: No Embeds")
             return None
@@ -108,14 +137,16 @@ class MudaeClaimableRoll(BaseModel):
 
         kakera_match = re.search(r"([\d,]+)[\s]*<:kakera:[\d]+>", clean_desc)
         if not kakera_match:
-            logger.error("Not a Mudae Roll: No Kakera Value. Maybe use $togglekakerarolls?")
+            logger.error(
+                "Not a Mudae Roll: No Kakera Value. Maybe use $togglekakerarolls?"
+            )
             return None
 
         msg_is_wished_by = re.search(r"Wished by <@([\d]+)>", message.content)
         wished_by = None
         if msg_is_wished_by and message.guild:
             wished_by = await message.guild.fetch_member(int(msg_is_wished_by.group(1)))
-        
+
         owner: MudaeRollOwner
         if message.interaction:
             owner = message.interaction.user
@@ -123,7 +154,9 @@ class MudaeClaimableRoll(BaseModel):
             while True:
                 roll_command = await roll_commands_queue.get()
                 try:
-                    reply_interval = (message.created_at - roll_command.message.created_at).total_seconds()
+                    reply_interval = (
+                        message.created_at - roll_command.message.created_at
+                    ).total_seconds()
                     if reply_interval <= MUDAE_TIMEOUT_SEC:
                         break
                 finally:
@@ -143,6 +176,7 @@ class MudaeClaimableRoll(BaseModel):
 
 MudaeClaimableRolls = Queue[MudaeClaimableRoll]
 
+
 class MudaeKakeraRoll(BaseModel):
 
     owner: MudaeRollOwner
@@ -153,7 +187,9 @@ class MudaeKakeraRoll(BaseModel):
         arbitrary_types_allowed = True
 
     @classmethod
-    async def create(cls, message: discord.Message, roll_commands_queue: Queue[MudaeRollCommand]):
+    async def create(
+        cls, message: discord.Message, roll_commands_queue: Queue[MudaeRollCommand]
+    ):
         if not message.components:
             return None
 
@@ -177,18 +213,16 @@ class MudaeKakeraRoll(BaseModel):
             while True:
                 roll_command = await roll_commands_queue.get()
                 try:
-                    reply_interval = (message.created_at - roll_command.message.created_at).total_seconds()
+                    reply_interval = (
+                        message.created_at - roll_command.message.created_at
+                    ).total_seconds()
                     if reply_interval <= MUDAE_TIMEOUT_SEC:
                         break
                 finally:
                     roll_commands_queue.task_done()
             owner = roll_command.owner
 
-        return MudaeKakeraRoll(
-            owner=owner,
-            message=message,
-            buttons=buttons
-        )
+        return MudaeKakeraRoll(owner=owner, message=message, buttons=buttons)
 
 
 MudaeKakeraRolls = Queue[MudaeKakeraRoll]
