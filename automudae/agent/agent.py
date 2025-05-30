@@ -4,6 +4,7 @@ import discord
 
 from automudae.config import Config
 from automudae.mudae.roll import MudaeClaimableRoll, MudaeKakeraRoll, MudaeRollCommands, MudaeRollCommand, MudaeClaimableRolls, MudaeFailedRollCommand, MudaeKakeraRolls
+from automudae.mudae.timer import MudaeTimerStatus
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -19,6 +20,7 @@ class AutoMudaeAgent(discord.Client):
         self.mudae_roll_commands = MudaeRollCommands()
         self.mudae_claimable_rolls = MudaeClaimableRolls()
         self.mudae_kakera_rolls = MudaeKakeraRolls()
+        self.timer_status: MudaeTimerStatus | None = None
 
         logger.info("AutoMudae Agent Initialization Complete")
 
@@ -63,4 +65,10 @@ class AutoMudaeAgent(discord.Client):
         failed_roll_command = await MudaeFailedRollCommand.create(message, self.mudae_roll_commands)
         if failed_roll_command is not None:
             logger.debug(f"[CMD] Failed Roll Command from {failed_roll_command.owner.display_name}")
+            return
+        
+        timer_status = await MudaeTimerStatus.create(message, self.user)
+        if timer_status is not None:
+            self.timer_status = timer_status
+            logger.debug(f"[TIMER] {self.timer_status}")
             return
