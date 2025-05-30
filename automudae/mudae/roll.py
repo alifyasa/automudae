@@ -6,6 +6,8 @@ from typing import Literal, get_args
 import discord
 from pydantic import BaseModel
 
+from automudae.config import ClaimCriteria
+
 logger = logging.getLogger(__name__)
 
 MUDAE_TIMEOUT_SEC = 0.5
@@ -83,7 +85,6 @@ class MudaeClaimableRoll(BaseModel):
     character: str
     series: str
     kakera_value: int
-    is_wished: bool
     wished_by: MudaeRollOwner | None
 
     class Config:
@@ -101,7 +102,6 @@ class MudaeClaimableRoll(BaseModel):
             f"character={self.character!r}, "
             f"series={self.series!r}, "
             f"kakera_value={self.kakera_value}, "
-            f"is_wished={self.is_wished}, "
             f"wished_by={wished_by})"
         )
 
@@ -109,8 +109,9 @@ class MudaeClaimableRoll(BaseModel):
         return self.__repr__()
 
     async def claim(self) -> None:
-        if not self.is_wished:
+        if self.wished_by is None:
             await self.message.add_reaction("❤️")
+            return None
         elif not self.message.components:
             return None
         for component in self.message.components:
@@ -122,6 +123,17 @@ class MudaeClaimableRoll(BaseModel):
                 if not child.emoji:
                     continue
                 await child.click()
+
+    def is_qualified(self, criteria: ClaimCriteria, user: MudaeRollOwner) -> bool:
+        character_qualify = self.character in criteria.character
+        series_qualify = self.series in criteria.series
+        kakera_qualify = self.kakera_value >= criteria.minKakera
+        wish_qualify = (
+            criteria.wish
+            and self.wished_by is not None
+            and self.wished_by.id == user.id
+        )
+        return character_qualify or series_qualify or kakera_qualify or wish_qualify
 
     @classmethod
     async def create(
@@ -187,7 +199,6 @@ class MudaeClaimableRoll(BaseModel):
             character=embed.author.name,
             series=str(series_match.group(1)),
             kakera_value=int(kakera_match.group(1).replace(",", "")),
-            is_wished=bool(msg_is_wished_by),
             wished_by=wished_by,
         )
 

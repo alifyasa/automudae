@@ -1,12 +1,13 @@
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ClaimCriteria(BaseModel):
-    character: list[str] = []
-    series: list[str] = []
+    wish = False
+    character: list[str] = Field(default_factory=list[str])
+    series: list[str] = Field(default_factory=list[str])
     minKakera: int = 10_000
 
 

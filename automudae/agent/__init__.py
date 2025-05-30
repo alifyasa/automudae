@@ -150,25 +150,17 @@ class AutoMudaeAgent(discord.Client):
             self.mudae_claimable_rolls.task_done()
             return
 
-        snipe_settings = self.config.mudae.claim.snipe
-        if (
-            roll.character in snipe_settings.character
-            or roll.series in snipe_settings.series
-            or roll.kakera_value >= snipe_settings.minKakera
-        ):
+        snipe_criteria = self.config.mudae.claim.snipe
+        if roll.is_qualified(snipe_criteria, self.user):
             logger.info(f"Snipe <{roll.character}>")
             async with self.react_rate_limiter:
                 await roll.claim()
             self.mudae_claimable_rolls.task_done()
             return
 
-        early_claim_settings = self.config.mudae.claim.earlyClaim
+        early_claim_criteria = self.config.mudae.claim.earlyClaim
         roll_is_mine = roll.owner.id == self.user.id
-        if roll_is_mine and (
-            roll.character in early_claim_settings.character
-            or roll.series in early_claim_settings.series
-            or roll.kakera_value >= early_claim_settings.minKakera
-        ):
+        if roll_is_mine and roll.is_qualified(early_claim_criteria, self.user):
             logger.info(f"Early Claim <{roll.character}>")
             async with self.react_rate_limiter:
                 await roll.claim()
@@ -181,12 +173,8 @@ class AutoMudaeAgent(discord.Client):
             self.mudae_claimable_rolls.task_done()
             return
 
-        late_claim_settings = self.config.mudae.claim.lateClaim
-        if not (
-            roll.character in late_claim_settings.character
-            or roll.series in late_claim_settings.series
-            or roll.kakera_value >= late_claim_settings.minKakera
-        ):
+        late_claim_criteria = self.config.mudae.claim.lateClaim
+        if not roll.is_qualified(late_claim_criteria, self.user):
             self.mudae_claimable_rolls.task_done()
             return
 
