@@ -142,3 +142,53 @@ class MudaeClaimableRoll(BaseModel):
 
 
 MudaeClaimableRolls = Queue[MudaeClaimableRoll]
+
+class MudaeKakeraRoll(BaseModel):
+
+    owner: MudaeRollOwner
+    message: discord.Message
+    buttons: list[discord.Button]
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @classmethod
+    async def create(cls, message: discord.Message, roll_commands_queue: Queue[MudaeRollCommand]):
+        if not message.components:
+            return None
+
+        buttons: list[discord.Button] = []
+        for component in message.components:
+            if not isinstance(component, discord.ActionRow):
+                continue
+            for child in component.children:
+                if not isinstance(child, discord.Button):
+                    continue
+                if not child.emoji:
+                    continue
+                if "kakera" not in child.emoji.name:
+                    continue
+                buttons.append(child)
+
+        owner: MudaeRollOwner
+        if message.interaction:
+            owner = message.interaction.user
+        else:
+            while True:
+                roll_command = await roll_commands_queue.get()
+                try:
+                    reply_interval = (message.created_at - roll_command.message.created_at).total_seconds()
+                    if reply_interval <= MUDAE_TIMEOUT_SEC:
+                        break
+                finally:
+                    roll_commands_queue.task_done()
+            owner = roll_command.owner
+
+        return MudaeKakeraRoll(
+            owner=owner,
+            message=message,
+            buttons=buttons
+        )
+
+
+MudaeKakeraRolls = Queue[MudaeKakeraRoll]
