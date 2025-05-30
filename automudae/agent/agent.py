@@ -3,6 +3,9 @@ import logging
 import discord
 from aiolimiter import AsyncLimiter
 from datetime import datetime
+import asyncio
+
+from discord.ext import tasks
 from automudae.config import Config
 from automudae.mudae.roll import (
     MudaeClaimableRoll,
@@ -20,6 +23,7 @@ logger.setLevel(logging.DEBUG)
 
 
 class AutoMudaeAgent(discord.Client):
+
     def __init__(self, config: Config):
         super().__init__()
 
@@ -30,7 +34,9 @@ class AutoMudaeAgent(discord.Client):
         self.mudae_claimable_rolls = MudaeClaimableRolls()
         self.mudae_kakera_rolls = MudaeKakeraRolls()
         self.timer_status: MudaeTimerStatus | None = None
-        self.rate_limiter = AsyncLimiter(1, 1)
+        self.react_rate_limiter = AsyncLimiter(1, 0.25)
+        self.command_rate_limiter = AsyncLimiter(1, 1.75)
+        self.tasks: list[asyncio.Task[None]] = []
 
         logger.info("AutoMudae Agent Initialization Complete")
 
@@ -43,6 +49,8 @@ class AutoMudaeAgent(discord.Client):
             logger.error("Channel is not a Text Channel")
             return
         self.mudae_channel = mudae_channel
+
+        self.tasks = [self.claim_loop.start(), self.roll_loop.start()]
 
         logger.info("AutoMudae Agent is Ready")
 
@@ -95,80 +103,107 @@ class AutoMudaeAgent(discord.Client):
             logger.debug(f"[TIMER] {self.timer_status}")
             return
 
+    @tasks.loop(seconds=0.25)
     async def claim_loop(self) -> None:
         late_claim_best_pick: MudaeClaimableRoll | None = None
-        while True:
 
-            if not self.user:
-                continue
+        if not self.user:
+            return
 
-            if not self.timer_status:
-                continue
+        if not self.timer_status:
+            return
 
-            if not self.timer_status.can_claim:
-                continue
+        if not self.timer_status.can_claim:
+            return
 
-            if (
-                self.mudae_claimable_rolls.empty()
-                and self.timer_status.rolls_left == 0
-                and late_claim_best_pick is not None
-            ):
-                async with self.rate_limiter:
-                    await late_claim_best_pick.claim()
-                late_claim_best_pick = None
-                continue
+        if (
+            self.mudae_claimable_rolls.empty()
+            and self.timer_status.rolls_left == 0
+            and late_claim_best_pick is not None
+        ):
+            async with self.react_rate_limiter:
+                await late_claim_best_pick.claim()
+            late_claim_best_pick = None
+            return
 
-            roll = await self.mudae_claimable_rolls.get()
+        roll = await self.mudae_claimable_rolls.get()
 
-            current_time = datetime.now()
-            roll_time_elapsed = current_time - roll.message.created_at
-            if roll_time_elapsed.total_seconds() >= 30:
-                self.mudae_claimable_rolls.task_done()
-                continue
-
-            snipe_settings = self.config.mudae.claim.snipe
-            if (
-                roll.character in snipe_settings.character
-                or roll.series in snipe_settings.series
-                or roll.kakera_value >= snipe_settings.minKakera
-            ):
-                async with self.rate_limiter:
-                    await roll.claim()
-                self.mudae_claimable_rolls.task_done()
-                continue
-
-            early_claim_settings = self.config.mudae.claim.earlyClaim
-            roll_is_mine = roll.owner.id == self.user.id
-            if roll_is_mine and (
-                roll.character in early_claim_settings.character
-                or roll.series in early_claim_settings.series
-                or roll.kakera_value >= early_claim_settings.minKakera
-            ):
-                async with self.rate_limiter:
-                    await roll.claim()
-                self.mudae_claimable_rolls.task_done()
-                continue
-
-            if not roll_is_mine:
-                self.mudae_claimable_rolls.task_done()
-                continue
-
-            late_claim_settings = self.config.mudae.claim.lateClaim
-            if not (
-                roll.character in late_claim_settings.character
-                or roll.series in late_claim_settings.series
-                or roll.kakera_value >= late_claim_settings.minKakera
-            ):
-                self.mudae_claimable_rolls.task_done()
-                continue
-
-            if late_claim_best_pick is None:
-                late_claim_best_pick = roll
-                self.mudae_claimable_rolls.task_done()
-                continue
-            elif roll.kakera_value > late_claim_best_pick.kakera_value:
-                late_claim_best_pick = roll
-                self.mudae_claimable_rolls.task_done()
-                continue
-
+        current_time = datetime.now()
+        roll_time_elapsed = current_time - roll.message.created_at
+        if roll_time_elapsed.total_seconds() >= 30:
             self.mudae_claimable_rolls.task_done()
+            return
+
+        snipe_settings = self.config.mudae.claim.snipe
+        if (
+            roll.character in snipe_settings.character
+            or roll.series in snipe_settings.series
+            or roll.kakera_value >= snipe_settings.minKakera
+        ):
+            async with self.react_rate_limiter:
+                await roll.claim()
+            self.mudae_claimable_rolls.task_done()
+            return
+
+        early_claim_settings = self.config.mudae.claim.earlyClaim
+        roll_is_mine = roll.owner.id == self.user.id
+        if roll_is_mine and (
+            roll.character in early_claim_settings.character
+            or roll.series in early_claim_settings.series
+            or roll.kakera_value >= early_claim_settings.minKakera
+        ):
+            async with self.react_rate_limiter:
+                await roll.claim()
+            self.mudae_claimable_rolls.task_done()
+            return
+
+        if not roll_is_mine:
+            self.mudae_claimable_rolls.task_done()
+            return
+
+        late_claim_settings = self.config.mudae.claim.lateClaim
+        if not (
+            roll.character in late_claim_settings.character
+            or roll.series in late_claim_settings.series
+            or roll.kakera_value >= late_claim_settings.minKakera
+        ):
+            self.mudae_claimable_rolls.task_done()
+            return
+
+        if late_claim_best_pick is None:
+            late_claim_best_pick = roll
+            self.mudae_claimable_rolls.task_done()
+            return
+        elif roll.kakera_value > late_claim_best_pick.kakera_value:
+            late_claim_best_pick = roll
+            self.mudae_claimable_rolls.task_done()
+            return
+
+        self.mudae_claimable_rolls.task_done()
+
+    @tasks.loop(seconds=0.25)
+    async def roll_loop(self) -> None:
+
+        if not self.user:
+            return
+
+        if not self.mudae_channel:
+            return
+
+        if not self.timer_status:
+            return
+
+        if not self.timer_status.can_claim:
+            return
+
+        if self.timer_status.rolls_left <= 0:
+            return
+
+        async with self.react_rate_limiter, self.command_rate_limiter:
+            await self.mudae_channel.send(self.config.mudae.roll.command)
+
+        self.timer_status.rolls_left -= 1
+
+        if self.timer_status.rolls_left <= 0:
+            async with self.react_rate_limiter, self.command_rate_limiter:
+                await self.mudae_channel.send("$tu")
