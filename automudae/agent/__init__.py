@@ -19,7 +19,7 @@ from automudae.mudae.roll import (
 from automudae.mudae.timer import MudaeTimerStatus
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 class AutoMudaeAgent(discord.Client):
@@ -83,7 +83,7 @@ class AutoMudaeAgent(discord.Client):
         )
         if claimable_roll is not None:
             await self.mudae_claimable_rolls.put(claimable_roll)
-            logger.debug(
+            logger.info(
                 f"[ROLL] <{claimable_roll.owner.display_name}> {claimable_roll.character} from {claimable_roll.series}"
             )
             return
@@ -91,7 +91,7 @@ class AutoMudaeAgent(discord.Client):
         kakera_roll = await MudaeKakeraRoll.create(message, self.mudae_roll_commands)
         if kakera_roll is not None:
             await self.mudae_kakera_rolls.put(kakera_roll)
-            logger.debug(
+            logger.info(
                 f"[KAKERA] <{kakera_roll.owner.display_name}> {[button.emoji.name for button in kakera_roll.buttons if button.emoji]}"
             )
             return
