@@ -9,6 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+MUDAE_TIMEOUT_SEC = 0.5
 MudaeRollOwner = discord.User | discord.ClientUser | discord.Member | discord.user.BaseUser
 MudaeRollCommandType = Literal["$wg", "$wa", "$w", "$wx"]
 
@@ -54,7 +55,7 @@ class MudaeFailedRollCommand(BaseModel):
                 roll_command = await roll_commands_queue.get()
                 try:
                     reply_interval = (message.created_at - roll_command.message.created_at).total_seconds()
-                    if reply_interval <= 1:
+                    if reply_interval <= MUDAE_TIMEOUT_SEC:
                         break
                 finally:
                     roll_commands_queue.task_done()
@@ -64,7 +65,7 @@ class MudaeFailedRollCommand(BaseModel):
         )
 
 
-class MudaeRoll(BaseModel):
+class MudaeClaimableRoll(BaseModel):
 
     owner: MudaeRollOwner
     message: discord.Message
@@ -79,18 +80,25 @@ class MudaeRoll(BaseModel):
 
     @classmethod
     async def create(cls, message: discord.Message, roll_commands_queue: Queue[MudaeRollCommand]):
-        if len(message.embeds) == 0:
-            logger.debug("Not Mudae Roll: No Embdes")
+        if not message.embeds:
+            logger.debug("Not Mudae Roll: No Embeds")
             return None
 
         embed = message.embeds[0]
+        if not embed.description:
+            logger.debug("Not Mudae Roll: No Embed Description")
+            return None
+
+        reactable = "React with any emoji to claim!" in embed.description
+        wished = "Wished by" in message.content
+        if not (reactable or wished):
+            logger.debug("Not a Mudae Roll: Not Claimable nor Wished")
+            return None
+
         if not embed.author.name:
             logger.debug("Not a Mudae Roll: No Character Name")
             return None
 
-        if not embed.description:
-            logger.debug("Not a Mudae Roll: No Description")
-            return None
         clean_desc = discord.utils.remove_markdown(embed.description)
 
         series_match = re.search(r"(.+)\n", clean_desc)
@@ -100,7 +108,7 @@ class MudaeRoll(BaseModel):
 
         kakera_match = re.search(r"([\d,]+)[\s]*<:kakera:[\d]+>", clean_desc)
         if not kakera_match:
-            logger.debug("Not a Mudae Roll: No Kakera Value")
+            logger.error("Not a Mudae Roll: No Kakera Value. Maybe use $togglekakerarolls?")
             return None
 
         msg_is_wished_by = re.search(r"Wished by <@([\d]+)>", message.content)
@@ -116,13 +124,13 @@ class MudaeRoll(BaseModel):
                 roll_command = await roll_commands_queue.get()
                 try:
                     reply_interval = (message.created_at - roll_command.message.created_at).total_seconds()
-                    if reply_interval <= 1:
+                    if reply_interval <= MUDAE_TIMEOUT_SEC:
                         break
                 finally:
                     roll_commands_queue.task_done()
             owner = roll_command.owner
 
-        return MudaeRoll(
+        return MudaeClaimableRoll(
             owner=owner,
             message=message,
             character=embed.author.name,
@@ -133,4 +141,4 @@ class MudaeRoll(BaseModel):
         )
 
 
-MudaeRolls = Queue[MudaeRoll]
+MudaeRolls = Queue[MudaeClaimableRoll]
