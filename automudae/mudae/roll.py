@@ -1,16 +1,67 @@
-import asyncio
 import re
-from queue import Queue
+from asyncio import Queue
 from typing import Literal, get_args
 
 import discord
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-type MudaeRollOwner = discord.User | discord.ClientUser | discord.Member
+import logging
 
+logger = logging.getLogger(__name__)
 
-class NotMudaeRollException(BaseException):
-    pass
+MudaeRollOwner = discord.User | discord.ClientUser | discord.Member | discord.user.BaseUser
+MudaeRollCommandType = Literal["$wg", "$wa", "$w", "$wx"]
+
+class MudaeRollCommand(BaseModel):
+
+    command: MudaeRollCommandType
+    owner: MudaeRollOwner
+    message: discord.Message
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @classmethod
+    def create(cls, message: discord.Message):
+        if message.content not in get_args(MudaeRollCommandType):
+            logger.debug(
+                f"{message.content} is not in {get_args(MudaeRollCommandType)}"
+            )
+            return None
+
+        return MudaeRollCommand(
+            command=message.content,  # type: ignore
+            owner=message.author,
+            message=message,
+        )
+
+MudaeRollCommands = Queue[MudaeRollCommand]
+
+class MudaeFailedRollCommand(BaseModel):
+    owner: MudaeRollOwner
+    class Config:
+        arbitrary_types_allowed = True
+    @classmethod
+    async def create(cls, message: discord.Message, roll_commands_queue: MudaeRollCommands):
+        clean_msg_content = discord.utils.remove_markdown(message.content)
+        if not re.findall(r"(.+), the roulette is limited to (\d+) uses per hour. (\d+) min left.", clean_msg_content):
+            return None
+        owner: MudaeRollOwner
+        if message.interaction:
+            owner = message.interaction.user
+        else:
+            while True:
+                roll_command = await roll_commands_queue.get()
+                try:
+                    reply_interval = (message.created_at - roll_command.message.created_at).total_seconds()
+                    if reply_interval <= 1:
+                        break
+                finally:
+                    roll_commands_queue.task_done()
+            owner = roll_command.owner
+        return MudaeFailedRollCommand(
+            owner=owner
+        )
 
 
 class MudaeRoll(BaseModel):
@@ -27,30 +78,52 @@ class MudaeRoll(BaseModel):
         arbitrary_types_allowed = True
 
     @classmethod
-    async def create(cls, message: discord.Message, roll_owner: MudaeRollOwner):
+    async def create(cls, message: discord.Message, roll_commands_queue: Queue[MudaeRollCommand]):
+        if len(message.embeds) == 0:
+            logger.debug("Not Mudae Roll: No Embdes")
+            return None
+
         embed = message.embeds[0]
         if not embed.author.name:
-            raise NotMudaeRollException("Not a Mudae Roll: No Character Name")
+            logger.debug("Not a Mudae Roll: No Character Name")
+            return None
 
         if not embed.description:
-            raise NotMudaeRollException("Not a Mudae Roll: No Description")
+            logger.debug("Not a Mudae Roll: No Description")
+            return None
         clean_desc = discord.utils.remove_markdown(embed.description)
 
         series_match = re.search(r"(.+)\n", clean_desc)
         if not series_match:
-            raise NotMudaeRollException("Not a Mudae Roll: No Series Name")
+            logger.debug("Not a Mudae Roll: No Series Name")
+            return None
 
         kakera_match = re.search(r"([\d,]+)[\s]*<:kakera:[\d]+>", clean_desc)
         if not kakera_match:
-            raise NotMudaeRollException("Not a Mudae Roll: No Kakera Value")
+            logger.debug("Not a Mudae Roll: No Kakera Value")
+            return None
 
         msg_is_wished_by = re.search(r"Wished by <@([\d]+)>", message.content)
         wished_by = None
         if msg_is_wished_by and message.guild:
             wished_by = await message.guild.fetch_member(int(msg_is_wished_by.group(1)))
+        
+        owner: MudaeRollOwner
+        if message.interaction:
+            owner = message.interaction.user
+        else:
+            while True:
+                roll_command = await roll_commands_queue.get()
+                try:
+                    reply_interval = (message.created_at - roll_command.message.created_at).total_seconds()
+                    if reply_interval <= 1:
+                        break
+                finally:
+                    roll_commands_queue.task_done()
+            owner = roll_command.owner
 
         return MudaeRoll(
-            owner=roll_owner,
+            owner=owner,
             message=message,
             character=embed.author.name,
             series=str(series_match.group(1)),
@@ -60,47 +133,4 @@ class MudaeRoll(BaseModel):
         )
 
 
-class MudaeRolls(BaseModel):
-    rolls: list[MudaeRoll] = Field(default_factory=list[MudaeRoll])
-    lock: asyncio.Lock = Field(default_factory=asyncio.Lock)
-
-    class Config:
-        arbitrary_types_allowed = True
-
-
-type MudaeRollCommandType = Literal["$wg", "$wa", "$w", "$wx"]
-
-
-class NotMudaeRollCommandException(BaseException):
-    pass
-
-
-class MudaeRollCommand(BaseModel):
-
-    command: MudaeRollCommandType
-    author: MudaeRollOwner
-    message: discord.Message
-
-    class Config:
-        arbitrary_types_allowed = True
-
-    @classmethod
-    def create(cls, message: discord.Message):
-        if message.content not in get_args(MudaeRollCommandType):
-            raise NotMudaeRollCommandException(
-                f"{message.content} is not in {get_args(MudaeRollCommandType)}"
-            )
-
-        return MudaeRollCommand(
-            command=message.content,  # type: ignore
-            author=message.author,
-            message=message,
-        )
-
-
-class MudaeRollCommandQueue(BaseModel):
-    queue: Queue[MudaeRollCommand] = Field(default_factory=Queue[MudaeRollCommand])
-    lock: asyncio.Lock = Field(default_factory=asyncio.Lock)
-
-    class Config:
-        arbitrary_types_allowed = True
+MudaeRolls = Queue[MudaeRoll]

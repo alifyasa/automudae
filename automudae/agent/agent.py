@@ -3,7 +3,7 @@ import logging
 import discord
 
 from automudae.config import Config
-from automudae.mudae.roll import MudaeRoll
+from automudae.mudae.roll import MudaeRoll, MudaeRollCommands, MudaeRollCommand, MudaeRolls, MudaeFailedRollCommand
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -14,12 +14,14 @@ class AutoMudaeAgent(discord.Client):
         super().__init__()
 
         self.config = config
+
         self.mudae_channel: discord.TextChannel | None = None
+        self.mudae_roll_commands = MudaeRollCommands()
+        self.mudae_rolls = MudaeRolls()
 
         logger.info("AutoMudae Agent Initialization Complete")
 
     async def on_ready(self) -> None:
-        logger.info("Agent is Ready")
 
         mudae_channel = self.get_channel(self.config.discord.channelId)
         if not mudae_channel:
@@ -29,19 +31,29 @@ class AutoMudaeAgent(discord.Client):
             return
         self.mudae_channel = mudae_channel
 
-        debug_msg_roll_cmd = await self.mudae_channel.fetch_message(1376732497374613585)
-        debug_msg = await self.mudae_channel.fetch_message(1376732497894969437)
-        if not self.user:
-            return
-        roll = await MudaeRoll.create(debug_msg, self.user)
-        logger.info(
-            (debug_msg.created_at - debug_msg_roll_cmd.created_at).total_seconds()
-        )
-        logger.info(roll)
+        logger.info("Agent is Ready")
 
     async def on_message(self, message: discord.Message) -> None:
+
+        if not self.user:
+            return
 
         if message.channel.id != self.config.discord.channelId:
             return
 
-        logger.debug(f"<@{message.author.display_name}>: {message.content}")
+        roll_command = MudaeRollCommand.create(message)
+        if roll_command is not None:
+            await self.mudae_roll_commands.put(roll_command)
+            logger.debug(f"[RCMD] {roll_command.command} from {roll_command.owner.display_name}. Queue Size: {self.mudae_roll_commands.qsize()}")
+            return
+            
+        roll = await MudaeRoll.create(message, self.mudae_roll_commands)
+        if roll is not None:
+            await self.mudae_rolls.put(roll)
+            logger.debug(f"[ROLL] {roll.character}. Queue Size: {self.mudae_rolls.qsize()}")
+            return
+        
+        failed_roll_command = await MudaeFailedRollCommand.create(message, self.mudae_roll_commands)
+        if failed_roll_command is not None:
+            logger.debug(f"[RCMD] Failed Roll Command from {failed_roll_command.owner.display_name}")
+            return

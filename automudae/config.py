@@ -17,7 +17,7 @@ class ClaimConfig(BaseModel):
 
 
 class RollConfig(BaseModel):
-    command: Literal["$wg"]
+    command: Literal["$wg", "$wa"]
 
 
 class ClaimRule:
