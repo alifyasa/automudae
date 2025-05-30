@@ -57,6 +57,9 @@ class AutoMudaeAgent(discord.Client):
             self.timer_status_loop.start(),
         ]
 
+        async with self.command_rate_limiter:
+            await self.mudae_channel.send("$tu")
+
         logger.info("AutoMudae Agent is Ready")
 
     async def on_message(self, message: discord.Message) -> None:
