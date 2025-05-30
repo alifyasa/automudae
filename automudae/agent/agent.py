@@ -58,7 +58,7 @@ class AutoMudaeAgent(discord.Client):
         if roll_command is not None:
             await self.mudae_roll_commands.put(roll_command)
             logger.debug(
-                f"[CMD] {roll_command.command} from {roll_command.owner.display_name}. Queue Size: {self.mudae_roll_commands.qsize()}"
+                f"[CMD] {roll_command.command} from {roll_command.owner.display_name}"
             )
             return
 
@@ -68,7 +68,7 @@ class AutoMudaeAgent(discord.Client):
         if claimable_roll is not None:
             await self.mudae_claimable_rolls.put(claimable_roll)
             logger.debug(
-                f"[ROLL] {claimable_roll.character}. Queue Size: {self.mudae_claimable_rolls.qsize()}"
+                f"[ROLL] <{claimable_roll.owner.display_name}> {claimable_roll.character} from {claimable_roll.series}"
             )
             return
 
@@ -76,7 +76,7 @@ class AutoMudaeAgent(discord.Client):
         if kakera_roll is not None:
             await self.mudae_kakera_rolls.put(kakera_roll)
             logger.debug(
-                f"[KAKERA] {[button.emoji.name for button in kakera_roll.buttons if button.emoji]}. Queue Size: {self.mudae_kakera_rolls.qsize()}"
+                f"[KAKERA] <{kakera_roll.owner.display_name}> {[button.emoji.name for button in kakera_roll.buttons if button.emoji]}"
             )
             return
 
