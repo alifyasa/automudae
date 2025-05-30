@@ -89,6 +89,25 @@ class MudaeClaimableRoll(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    def __repr__(self) -> str:
+        if self.wished_by:
+            wished_by = self.wished_by.display_name
+        else:
+            wished_by = None
+
+        return (
+            f"{self.__class__.__name__}("
+            f"owner={self.owner.display_name}, "
+            f"character={self.character!r}, "
+            f"series={self.series!r}, "
+            f"kakera_value={self.kakera_value}, "
+            f"is_wished={self.is_wished}, "
+            f"wished_by={wished_by})"
+        )
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
     async def claim(self) -> None:
         if not self.is_wished:
             await self.message.add_reaction("❤️")
@@ -184,6 +203,16 @@ class MudaeKakeraRoll(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            f"owner={self.owner.display_name}, "
+            f"buttons={[button.emoji.name for button in self.buttons if button.emoji]})"
+        )
+
+    def __str__(self) -> str:
+        return self.__repr__()
 
     async def kakera_react(self) -> None:
         for button in self.buttons:

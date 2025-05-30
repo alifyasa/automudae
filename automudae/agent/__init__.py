@@ -83,17 +83,13 @@ class AutoMudaeAgent(discord.Client):
         )
         if claimable_roll is not None:
             await self.mudae_claimable_rolls.put(claimable_roll)
-            logger.info(
-                f"[ROLL] <{claimable_roll.owner.display_name}> {claimable_roll.character} from {claimable_roll.series}"
-            )
+            logger.info(claimable_roll)
             return
 
         kakera_roll = await MudaeKakeraRoll.create(message, self.mudae_roll_commands)
         if kakera_roll is not None:
             await self.mudae_kakera_rolls.put(kakera_roll)
-            logger.info(
-                f"[KAKERA] <{kakera_roll.owner.display_name}> {[button.emoji.name for button in kakera_roll.buttons if button.emoji]}"
-            )
+            logger.info(kakera_roll)
             return
 
         failed_roll_command = await MudaeFailedRollCommand.create(
@@ -138,6 +134,7 @@ class AutoMudaeAgent(discord.Client):
             and self.timer_status.rolls_left == 0
             and self.late_claim_best_pick is not None
         ):
+            logger.info(f"Late Claim <{self.late_claim_best_pick.character}>")
             async with self.react_rate_limiter:
                 await self.late_claim_best_pick.claim()
             async with self.command_rate_limiter:
@@ -159,6 +156,7 @@ class AutoMudaeAgent(discord.Client):
             or roll.series in snipe_settings.series
             or roll.kakera_value >= snipe_settings.minKakera
         ):
+            logger.info(f"Snipe <{roll.character}>")
             async with self.react_rate_limiter:
                 await roll.claim()
             self.mudae_claimable_rolls.task_done()
@@ -171,6 +169,7 @@ class AutoMudaeAgent(discord.Client):
             or roll.series in early_claim_settings.series
             or roll.kakera_value >= early_claim_settings.minKakera
         ):
+            logger.info(f"Early Claim <{roll.character}>")
             async with self.react_rate_limiter:
                 await roll.claim()
             async with self.command_rate_limiter:
@@ -230,6 +229,7 @@ class AutoMudaeAgent(discord.Client):
             self.mudae_kakera_rolls.task_done()
             return
 
+        logger.info(f"Kakera React <{roll}>")
         async with self.react_rate_limiter:
             await roll.kakera_react()
 
