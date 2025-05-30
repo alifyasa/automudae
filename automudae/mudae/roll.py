@@ -1,11 +1,10 @@
+import logging
 import re
 from asyncio import Queue
 from typing import Literal, get_args
 
 import discord
 from pydantic import BaseModel
-
-import logging
 
 logger = logging.getLogger(__name__)
 
