@@ -141,4 +141,4 @@ class MudaeClaimableRoll(BaseModel):
         )
 
 
-MudaeRolls = Queue[MudaeClaimableRoll]
+MudaeClaimableRolls = Queue[MudaeClaimableRoll]

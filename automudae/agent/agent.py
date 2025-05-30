@@ -3,7 +3,7 @@ import logging
 import discord
 
 from automudae.config import Config
-from automudae.mudae.roll import MudaeClaimableRoll, MudaeRollCommands, MudaeRollCommand, MudaeRolls, MudaeFailedRollCommand
+from automudae.mudae.roll import MudaeClaimableRoll, MudaeRollCommands, MudaeRollCommand, MudaeClaimableRolls, MudaeFailedRollCommand
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -17,7 +17,7 @@ class AutoMudaeAgent(discord.Client):
 
         self.mudae_channel: discord.TextChannel | None = None
         self.mudae_roll_commands = MudaeRollCommands()
-        self.mudae_claimable_rolls = MudaeRolls()
+        self.mudae_claimable_rolls = MudaeClaimableRolls()
 
         logger.info("AutoMudae Agent Initialization Complete")
 
@@ -47,10 +47,10 @@ class AutoMudaeAgent(discord.Client):
             logger.debug(f"[RCMD] {roll_command.command} from {roll_command.owner.display_name}. Queue Size: {self.mudae_roll_commands.qsize()}")
             return
             
-        roll = await MudaeClaimableRoll.create(message, self.mudae_roll_commands)
-        if roll is not None:
-            await self.mudae_claimable_rolls.put(roll)
-            logger.debug(f"[ROLL] {roll.character}. Queue Size: {self.mudae_claimable_rolls.qsize()}")
+        claimable_roll = await MudaeClaimableRoll.create(message, self.mudae_roll_commands)
+        if claimable_roll is not None:
+            await self.mudae_claimable_rolls.put(claimable_roll)
+            logger.debug(f"[ROLL] {claimable_roll.character}. Queue Size: {self.mudae_claimable_rolls.qsize()}")
             return
         
         failed_roll_command = await MudaeFailedRollCommand.create(message, self.mudae_roll_commands)
