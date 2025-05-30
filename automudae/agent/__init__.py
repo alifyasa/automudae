@@ -113,6 +113,9 @@ class AutoMudaeAgent(discord.Client):
         if not self.timer_status:
             return
 
+        if not self.mudae_channel:
+            return
+
         if not self.timer_status.can_claim:
             return
 
@@ -123,6 +126,8 @@ class AutoMudaeAgent(discord.Client):
         ):
             async with self.react_rate_limiter:
                 await self.late_claim_best_pick.claim()
+            async with self.command_rate_limiter:
+                await self.mudae_channel.send("$tu")
             self.late_claim_best_pick = None
             return
 
@@ -154,6 +159,8 @@ class AutoMudaeAgent(discord.Client):
         ):
             async with self.react_rate_limiter:
                 await roll.claim()
+            async with self.command_rate_limiter:
+                await self.mudae_channel.send("$tu")
             self.mudae_claimable_rolls.task_done()
             return
 
@@ -212,7 +219,7 @@ class AutoMudaeAgent(discord.Client):
         async with self.react_rate_limiter:
             await roll.kakera_react()
 
-        async with self.react_rate_limiter, self.command_rate_limiter:
+        async with self.command_rate_limiter:
             await self.mudae_channel.send("$tu")
 
         self.mudae_kakera_rolls.task_done()

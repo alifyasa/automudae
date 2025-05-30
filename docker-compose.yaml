@@ -1,5 +1,5 @@
 services:
-  automudae-rewrite:
+  automudae:
     build:
       context: .
     restart: always
