@@ -17,7 +17,8 @@ class ClaimConfig(BaseModel):
 
 
 class RollConfig(BaseModel):
-    command: Literal["$wg"]
+    command: Literal["$wg", "$wa"]
+
 
 class ClaimRule:
     criteria: ClaimCriteria
@@ -48,8 +49,8 @@ class Config(BaseModel):
     discord: DiscordConfig
     mudae: MudaeConfig
 
-
-def get_config(path: str = "configs/main.yaml"):
-    with open(path, "r") as f:
-        yaml_data = yaml.safe_load(f)
-        return Config(**yaml_data)
+    @classmethod
+    def from_file(cls, path: str = "configs/main.yaml"):
+        with open(path, "r") as f:
+            yaml_data = yaml.safe_load(f)
+            return Config(**yaml_data)

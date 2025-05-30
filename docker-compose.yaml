@@ -1,9 +1,10 @@
 services:
-  automudae:
+  automudae-rewrite:
     build:
       context: .
     restart: always
     volumes:
       - ./configs/main.yaml:/app/config.yaml
+      - ./configs/:/app/configs/
     environment:
       - ENV=development
