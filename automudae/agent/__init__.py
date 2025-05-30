@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, time
 
 import discord
 from aiolimiter import AsyncLimiter
@@ -51,7 +51,11 @@ class AutoMudaeAgent(discord.Client):
             return
         self.mudae_channel = mudae_channel
 
-        self.tasks = [self.claim_loop.start(), self.roll_loop.start()]
+        self.tasks = [
+            self.claim_loop.start(),
+            self.roll_loop.start(),
+            self.timer_status_loop.start(),
+        ]
 
         logger.info("AutoMudae Agent is Ready")
 
@@ -103,6 +107,13 @@ class AutoMudaeAgent(discord.Client):
             self.timer_status = timer_status
             logger.debug(f"[TIMER] {self.timer_status}")
             return
+
+    @tasks.loop(time=[time(hour=hour, tzinfo=timezone.utc) for hour in range(24)])
+    async def timer_status_loop(self) -> None:
+        if not self.mudae_channel:
+            return
+        async with self.command_rate_limiter:
+            await self.mudae_channel.send("$tu")
 
     @tasks.loop(seconds=0.25)
     async def claim_loop(self) -> None:
