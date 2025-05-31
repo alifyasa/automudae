@@ -191,6 +191,11 @@ class AutoMudaeAgent(discord.Client):
             return
         logger.debug(f" > Failed Early Claim Criteria")
 
+        if not self.timer_status.next_hour_is_reset:
+            logger.debug(f" > Next Hour is Not Reset, skipping")
+            self.mudae_claimable_rolls.task_done()
+            return
+
         late_claim_criteria = self.config.mudae.claim.lateClaim
         if not roll.is_qualified(late_claim_criteria, self.user):
             logger.debug(f" > Failed Late Claim Criteria")
