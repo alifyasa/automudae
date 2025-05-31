@@ -160,17 +160,23 @@ class MudaeClaimableRoll(BaseModel):
 
         clean_desc = discord.utils.remove_markdown(embed.description)
 
-        series_match = re.search(r"(.+)\n", clean_desc)
-        if not series_match:
-            logger.debug("Not a Mudae Roll: No Series Name")
-            return None
-
-        kakera_match = re.search(r"([\d,]+)[\s]*<:kakera:[\d]+>", clean_desc)
-        if not kakera_match:
+        series_kakera_match = re.search(
+            r"([\s\S]+)\n([\d,]+)[\s]*<:kakera:[\d]+>", clean_desc
+        )
+        if not series_kakera_match:
             logger.error(
-                "Not a Mudae Roll: No Kakera Value. Maybe use $togglekakerarolls?"
+                "Not a Mudae Roll: No Series Name or No Kakera Value. Maybe use $togglekakerarolls?"
             )
             return None
+
+        series_name = str(series_kakera_match.group(1))
+        series_name = re.sub(r"[\r\n]+", " ", series_name)
+        series_name = re.sub(r"\s+", " ", series_name)
+        series_name = series_name.strip()
+
+        kakera_value_str = str(series_kakera_match.group(2))
+        kakera_value_str = re.sub(",", "", kakera_value_str)
+        kakera_value = int(kakera_value_str)
 
         msg_is_wished_by = re.search(r"Wished by <@([\d]+)>", message.content)
         wished_by = None
@@ -197,8 +203,8 @@ class MudaeClaimableRoll(BaseModel):
             owner=owner,
             message=message,
             character=embed.author.name,
-            series=str(series_match.group(1)),
-            kakera_value=int(kakera_match.group(1).replace(",", "")),
+            series=series_name,
+            kakera_value=kakera_value,
             wished_by=wished_by,
         )
 
