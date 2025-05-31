@@ -21,6 +21,19 @@ class MudaeTimerStatus(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            f"owner={self.owner.display_name}, "
+            f"can_claim={self.can_claim}, "
+            f"rolls_left={self.rolls_left}, "
+            f"can_kakera_react={self.can_kakera_react}, "
+            f"next_hour_is_reset={self.next_hour_is_reset})"
+        )
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
     @classmethod
     async def create(cls, message: discord.Message, current_user: MudaeTimerOwner):
         clean_msg = discord.utils.remove_markdown(message.content)

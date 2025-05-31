@@ -105,7 +105,7 @@ class AutoMudaeAgent(discord.Client):
         timer_status = await MudaeTimerStatus.create(message, self.user)
         if timer_status is not None:
             self.timer_status = timer_status
-            logger.debug(f"[TIMER] {self.timer_status}")
+            logger.info(self.timer_status)
             return
 
     @tasks.loop(
