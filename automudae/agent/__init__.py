@@ -117,7 +117,7 @@ class AutoMudaeAgent(discord.Client):
         async with self.command_rate_limiter:
             await self.mudae_channel.send("$tu")
 
-    @tasks.loop(seconds=0.25)
+    @tasks.loop(seconds=0.1)
     async def claim_loop(self) -> None:
 
         if not self.user:
@@ -141,8 +141,14 @@ class AutoMudaeAgent(discord.Client):
             and self.timer_status.rolls_left == 0
             and self.late_claim_best_pick is not None
         ):
-            logger.info(f"Late Claim <{self.late_claim_best_pick.character}>")
             async with self.react_rate_limiter:
+                current_time = datetime.now(tz=timezone.utc)
+                time_to_claim = (
+                    current_time - self.late_claim_best_pick.message.created_at
+                ).total_seconds()
+                logger.info(
+                    f"Late Claim: {self.late_claim_best_pick.character} | Reaction Time: {time_to_claim:.2f}s"
+                )
                 await self.late_claim_best_pick.claim()
             async with self.command_rate_limiter:
                 await self.mudae_channel.send("$tu")
@@ -164,12 +170,16 @@ class AutoMudaeAgent(discord.Client):
 
         snipe_criteria = self.config.mudae.claim.snipe
         if roll.is_qualified(snipe_criteria, self.user):
-            logger.info(f"Snipe <{roll.character}>")
             async with self.react_rate_limiter:
+                current_time = datetime.now(tz=timezone.utc)
+                time_to_claim = current_time - roll.message.created_at
+                logger.info(
+                    f"Snipe: {roll.character} | Reaction Time: {time_to_claim:.2f}s"
+                )
                 await roll.claim()
             self.mudae_claimable_rolls.task_done()
             return
-        logger.debug(f" > Failed Snipe Criteria")
+        logger.debug(f" > Roll Does Not Fulfill Snipe Criteria")
 
         roll_is_mine = roll.owner.id == self.user.id
         if not roll_is_mine:
@@ -179,8 +189,12 @@ class AutoMudaeAgent(discord.Client):
 
         early_claim_criteria = self.config.mudae.claim.earlyClaim
         if roll.is_qualified(early_claim_criteria, self.user):
-            logger.info(f"Early Claim <{roll.character}>")
             async with self.react_rate_limiter:
+                current_time = datetime.now(tz=timezone.utc)
+                time_to_claim = current_time - roll.message.created_at
+                logger.info(
+                    f"Early Claim: {roll.character} | Reaction Time: {time_to_claim:.2f}s"
+                )
                 await roll.claim()
             async with self.command_rate_limiter:
                 await self.mudae_channel.send("$tu")
@@ -215,7 +229,7 @@ class AutoMudaeAgent(discord.Client):
         logger.debug(f" > Failed Overriding Late Claim Best Pick")
         self.mudae_claimable_rolls.task_done()
 
-    @tasks.loop(seconds=0.25)
+    @tasks.loop(seconds=0.1)
     async def kakera_react_loop(self) -> None:
 
         if self.mudae_kakera_rolls.empty():
@@ -262,7 +276,7 @@ class AutoMudaeAgent(discord.Client):
 
         self.mudae_kakera_rolls.task_done()
 
-    @tasks.loop(seconds=0.25)
+    @tasks.loop(seconds=0.1)
     async def roll_loop(self) -> None:
 
         if not self.user:
