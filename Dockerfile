@@ -13,4 +13,4 @@ COPY automudae/ ./automudae/
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "-m", "automudae", "-f", "config.yaml"]
+CMD ["python", "-m", "automudae", "-f", "config/config.yaml"]
