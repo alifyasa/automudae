@@ -108,7 +108,12 @@ class AutoMudaeAgent(discord.Client):
             logger.debug(f"[TIMER] {self.timer_status}")
             return
 
-    @tasks.loop(time=[time(hour=hour, tzinfo=timezone.utc) for hour in range(24)])
+    @tasks.loop(
+        time=[
+            time(hour=hour, minute=23, second=5, tzinfo=timezone.utc)
+            for hour in range(24)
+        ]
+    )
     async def timer_status_loop(self) -> None:
         if not self.mudae_channel:
             return
@@ -118,16 +123,23 @@ class AutoMudaeAgent(discord.Client):
     @tasks.loop(seconds=0.25)
     async def claim_loop(self) -> None:
 
+        if self.mudae_claimable_rolls.empty():
+            return
+
         if not self.user:
+            logger.debug("Not Claiming: Not Logged In")
             return
 
         if not self.timer_status:
+            logger.debug("Not Claiming: Timer Status Not Available")
             return
 
         if not self.mudae_channel:
+            logger.debug("Not Claiming: Mudae Channel Unavailable")
             return
 
         if not self.timer_status.can_claim:
+            logger.debug("Not Claiming: Cannot Claim")
             return
 
         if (
@@ -144,14 +156,17 @@ class AutoMudaeAgent(discord.Client):
             return
 
         roll = await self.mudae_claimable_rolls.get()
+        logger.info(f"Processing {roll}")
 
         current_time = datetime.now(tz=timezone.utc)
         roll_time_elapsed = current_time - roll.message.created_at
+        logger.info(f" > Time elapsed: {roll_time_elapsed.total_seconds()}")
         if roll_time_elapsed.total_seconds() >= 30:
             self.mudae_claimable_rolls.task_done()
             return
 
         snipe_criteria = self.config.mudae.claim.snipe
+        logger.info(f" > Snipe Qualify? {roll.is_qualified(snipe_criteria, self.user)}")
         if roll.is_qualified(snipe_criteria, self.user):
             logger.info(f"Snipe <{roll.character}>")
             async with self.react_rate_limiter:
@@ -161,6 +176,9 @@ class AutoMudaeAgent(discord.Client):
 
         early_claim_criteria = self.config.mudae.claim.earlyClaim
         roll_is_mine = roll.owner.id == self.user.id
+        logger.info(
+            f" > EC Qualify? {roll.is_qualified(early_claim_criteria, self.user)}"
+        )
         if roll_is_mine and roll.is_qualified(early_claim_criteria, self.user):
             logger.info(f"Early Claim <{roll.character}>")
             async with self.react_rate_limiter:
@@ -193,16 +211,23 @@ class AutoMudaeAgent(discord.Client):
     @tasks.loop(seconds=0.25)
     async def kakera_react_loop(self) -> None:
 
+        if self.mudae_kakera_rolls.empty():
+            return
+
         if not self.user:
+            logger.debug("Not Kakera Reacting: Not Logged In")
             return
 
         if not self.mudae_channel:
+            logger.debug("Not Kakera Reacting: Mudae Channel Unavailable")
             return
 
         if not self.timer_status:
+            logger.debug("Not Kakera Reacting: Timer Status Unavailable")
             return
 
         if not self.timer_status.can_kakera_react:
+            logger.debug("Not Kakera Reacting: Cannot Kakera React")
             return
 
         roll = await self.mudae_kakera_rolls.get()
