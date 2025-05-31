@@ -55,6 +55,7 @@ class AutoMudaeAgent(discord.Client):
             self.claim_loop.start(),
             self.roll_loop.start(),
             self.timer_status_loop.start(),
+            self.kakera_react_loop.start(),
         ]
 
         async with self.command_rate_limiter:
