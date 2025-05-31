@@ -123,9 +123,6 @@ class AutoMudaeAgent(discord.Client):
     @tasks.loop(seconds=0.25)
     async def claim_loop(self) -> None:
 
-        if self.mudae_claimable_rolls.empty():
-            return
-
         if not self.user:
             logger.debug("Not Claiming: Not Logged In")
             return
@@ -155,31 +152,36 @@ class AutoMudaeAgent(discord.Client):
             self.late_claim_best_pick = None
             return
 
+        if self.mudae_claimable_rolls.empty():
+            return
+
         roll = await self.mudae_claimable_rolls.get()
-        logger.info(f"Processing {roll}")
+        logger.debug(f" > Processing {roll}")
 
         current_time = datetime.now(tz=timezone.utc)
         roll_time_elapsed = current_time - roll.message.created_at
-        logger.info(f" > Time elapsed: {roll_time_elapsed.total_seconds()}")
         if roll_time_elapsed.total_seconds() >= 30:
+            logger.debug(f" > Roll older than 30 seconds, skipping")
             self.mudae_claimable_rolls.task_done()
             return
 
         snipe_criteria = self.config.mudae.claim.snipe
-        logger.info(f" > Snipe Qualify? {roll.is_qualified(snipe_criteria, self.user)}")
         if roll.is_qualified(snipe_criteria, self.user):
             logger.info(f"Snipe <{roll.character}>")
             async with self.react_rate_limiter:
                 await roll.claim()
             self.mudae_claimable_rolls.task_done()
             return
+        logger.debug(f" > Failed Snipe Criteria")
+
+        roll_is_mine = roll.owner.id == self.user.id
+        if not roll_is_mine:
+            logger.debug(f" > Roll Not Mine, skipping")
+            self.mudae_claimable_rolls.task_done()
+            return
 
         early_claim_criteria = self.config.mudae.claim.earlyClaim
-        roll_is_mine = roll.owner.id == self.user.id
-        logger.info(
-            f" > EC Qualify? {roll.is_qualified(early_claim_criteria, self.user)}"
-        )
-        if roll_is_mine and roll.is_qualified(early_claim_criteria, self.user):
+        if roll.is_qualified(early_claim_criteria, self.user):
             logger.info(f"Early Claim <{roll.character}>")
             async with self.react_rate_limiter:
                 await roll.claim()
@@ -187,25 +189,28 @@ class AutoMudaeAgent(discord.Client):
                 await self.mudae_channel.send("$tu")
             self.mudae_claimable_rolls.task_done()
             return
-
-        if not roll_is_mine:
-            self.mudae_claimable_rolls.task_done()
-            return
+        logger.debug(f" > Failed Early Claim Criteria")
 
         late_claim_criteria = self.config.mudae.claim.lateClaim
         if not roll.is_qualified(late_claim_criteria, self.user):
+            logger.debug(f" > Failed Late Claim Criteria")
             self.mudae_claimable_rolls.task_done()
             return
 
         if self.late_claim_best_pick is None:
+            logger.debug(" > Set as Last Claim Best Pick")
             self.late_claim_best_pick = roll
             self.mudae_claimable_rolls.task_done()
             return
         elif roll.kakera_value > self.late_claim_best_pick.kakera_value:
+            logger.debug(
+                f" > Overriding Previous Last Claim Best Pick {self.late_claim_best_pick}"
+            )
             self.late_claim_best_pick = roll
             self.mudae_claimable_rolls.task_done()
             return
 
+        logger.debug(f" > Failed Overriding Late Claim Best Pick")
         self.mudae_claimable_rolls.task_done()
 
     @tasks.loop(seconds=0.25)
@@ -231,15 +236,18 @@ class AutoMudaeAgent(discord.Client):
             return
 
         roll = await self.mudae_kakera_rolls.get()
+        logger.debug(f" > Processing {roll}")
 
         current_time = datetime.now(tz=timezone.utc)
         roll_time_elapsed = current_time - roll.message.created_at
         if roll_time_elapsed.total_seconds() >= 30:
+            logger.debug(f" > Roll older than 30 seconds, skipping")
             self.mudae_kakera_rolls.task_done()
             return
 
         roll_is_mine = roll.owner.id == self.user.id
         if not roll_is_mine:
+            logger.debug(f" > Roll Not Mine, skipping")
             self.mudae_kakera_rolls.task_done()
             return
 
@@ -264,7 +272,16 @@ class AutoMudaeAgent(discord.Client):
         if not self.timer_status:
             return
 
-        if not self.timer_status.can_claim:
+        if (
+            self.config.mudae.roll.doNotRollWhenCanotClaim
+            and not self.timer_status.can_claim
+        ):
+            return
+
+        if (
+            self.config.mudae.roll.doNotRollWhenCannotKakeraReact
+            and not self.timer_status.can_kakera_react
+        ):
             return
 
         if self.timer_status.rolls_left <= 0:

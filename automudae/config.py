@@ -19,6 +19,8 @@ class ClaimConfig(BaseModel):
 
 class RollConfig(BaseModel):
     command: Literal["$wg", "$wa", "$w"]
+    doNotRollWhenCanotClaim: bool = True
+    doNotRollWhenCannotKakeraReact: bool = False
 
 
 class ClaimRule:
