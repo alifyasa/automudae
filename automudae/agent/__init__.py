@@ -109,10 +109,7 @@ class AutoMudaeAgent(discord.Client):
             return
 
     @tasks.loop(
-        time=[
-            time(hour=hour, minute=23, second=5, tzinfo=timezone.utc)
-            for hour in range(24)
-        ]
+        time=[time(hour=hour, minute=20, tzinfo=timezone.utc) for hour in range(24)]
     )
     async def timer_status_loop(self) -> None:
         if not self.mudae_channel:
