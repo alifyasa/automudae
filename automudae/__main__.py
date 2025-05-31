@@ -10,7 +10,7 @@ def main() -> None:
     config = Config.from_file(path=args.file)
 
     config_schema = yaml.dump(Config.model_json_schema())
-    with open("configs/schema.yaml", "w") as f:
+    with open("config/schema.yaml", "w") as f:
         f.write(config_schema)
 
     agent = AutoMudaeAgent(config)

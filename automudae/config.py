@@ -53,7 +53,7 @@ class Config(BaseModel):
     mudae: MudaeConfig
 
     @classmethod
-    def from_file(cls, path: str = "configs/main.yaml"):
+    def from_file(cls, path: str = "config/config.yaml"):
         with open(path, "r") as f:
             yaml_data = yaml.safe_load(f)
             return Config(**yaml_data)

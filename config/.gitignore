@@ -1,0 +1,4 @@
+*
+!.gitignore
+!schema.yaml
+!example.config.yaml

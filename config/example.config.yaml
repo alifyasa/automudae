@@ -1,0 +1,22 @@
+name: Example Configuration
+version: 1
+discord:
+  token: ""
+  channelId: 0
+  mudaeBotId: 432610292342587392
+mudae:
+  roll:
+    command: $w
+    doNotRollWhenCanotClaim: True
+    doNotRollWhenCannotKakeraReact: False
+  claim:
+    snipe:
+      wish: True
+      character:
+       - Nilou
+      series:
+       - Wuthering Waves
+    earlyClaim:
+      minKakera: 150
+    lateClaim:
+      minKakera: 40

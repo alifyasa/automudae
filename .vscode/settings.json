@@ -44,5 +44,8 @@
 "editor.defaultFormatter": "ms-python.black-formatter",
 "[dockerfile]": {
     "editor.defaultFormatter": "ms-azuretools.vscode-containers"
+},
+"[ignore]": {
+    "editor.defaultFormatter": "foxundermoon.shell-format"
 }
 }

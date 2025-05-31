@@ -1,0 +1,116 @@
+$defs:
+  ClaimConfig:
+    properties:
+      earlyClaim:
+        $ref: '#/$defs/ClaimCriteria'
+        default:
+          character: []
+          minKakera: 10000
+          series: []
+          wish: false
+      lateClaim:
+        $ref: '#/$defs/ClaimCriteria'
+        default:
+          character: []
+          minKakera: 10000
+          series: []
+          wish: false
+      snipe:
+        $ref: '#/$defs/ClaimCriteria'
+        default:
+          character: []
+          minKakera: 10000
+          series: []
+          wish: false
+    title: ClaimConfig
+    type: object
+  ClaimCriteria:
+    properties:
+      character:
+        items:
+          type: string
+        title: Character
+        type: array
+      minKakera:
+        default: 10000
+        title: Minkakera
+        type: integer
+      series:
+        items:
+          type: string
+        title: Series
+        type: array
+      wish:
+        default: false
+        title: Wish
+        type: boolean
+    title: ClaimCriteria
+    type: object
+  DiscordConfig:
+    properties:
+      channelId:
+        title: Channelid
+        type: integer
+      mudaeBotId:
+        title: Mudaebotid
+        type: integer
+      token:
+        title: Token
+        type: string
+    required:
+    - token
+    - channelId
+    - mudaeBotId
+    title: DiscordConfig
+    type: object
+  MudaeConfig:
+    properties:
+      claim:
+        $ref: '#/$defs/ClaimConfig'
+      roll:
+        $ref: '#/$defs/RollConfig'
+    required:
+    - roll
+    - claim
+    title: MudaeConfig
+    type: object
+  RollConfig:
+    properties:
+      command:
+        enum:
+        - $wg
+        - $wa
+        - $w
+        title: Command
+        type: string
+      doNotRollWhenCannotKakeraReact:
+        default: false
+        title: Donotrollwhencannotkakerareact
+        type: boolean
+      doNotRollWhenCanotClaim:
+        default: true
+        title: Donotrollwhencanotclaim
+        type: boolean
+    required:
+    - command
+    title: RollConfig
+    type: object
+properties:
+  discord:
+    $ref: '#/$defs/DiscordConfig'
+  mudae:
+    $ref: '#/$defs/MudaeConfig'
+  name:
+    title: Name
+    type: string
+  version:
+    const: 1
+    title: Version
+    type: integer
+required:
+- name
+- version
+- discord
+- mudae
+title: Config
+type: object
