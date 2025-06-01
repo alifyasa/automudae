@@ -118,25 +118,25 @@ class AutoMudaeAgent(discord.Client):
     async def handle_claim(self, roll: MudaeClaimableRoll) -> None:
 
         if not self.user:
-            logger.warning(" > Not Claiming: Not Logged In")
+            logger.warning("> Not Claiming: Not Logged In")
             return
 
         if not self.timer_status:
-            logger.warning(" > Not Claiming: Timer Status Not Available")
+            logger.warning("> Not Claiming: Timer Status Not Available")
             return
 
         if not self.mudae_channel:
-            logger.warning(" > Not Claiming: Mudae Channel Unavailable")
+            logger.warning("> Not Claiming: Mudae Channel Unavailable")
             return
 
         if not self.timer_status.can_claim:
-            logger.info(" > Not Claiming: Cannot Claim")
+            logger.info("> Not Claiming: Cannot Claim")
             return
 
         current_time = datetime.now(tz=timezone.utc)
         roll_time_elapsed = current_time - roll.message.created_at
         if roll_time_elapsed.total_seconds() >= 30:
-            logger.debug(" > Roll older than 30 seconds")
+            logger.debug("> Roll older than 30 seconds")
             return
 
         snipe_criteria = self.config.mudae.claim.snipe
@@ -145,17 +145,17 @@ class AutoMudaeAgent(discord.Client):
                 current_time = datetime.now(tz=timezone.utc)
                 time_to_claim = (current_time - roll.message.created_at).total_seconds()
                 logger.info(
-                    f" > Snipe: {roll.character} - Reaction Time: {time_to_claim:.2f}s"
+                    f"> Snipe: {roll.character} - Reaction Time: {time_to_claim:.2f}s"
                 )
                 await roll.claim()
             async with self.command_rate_limiter:
                 await self.mudae_channel.send("$tu")
             return
-        logger.debug(" > Failed Snipe Criteria")
+        logger.debug("> Failed Snipe Criteria")
 
         roll_is_mine = roll.owner.id == self.user.id
         if not roll_is_mine:
-            logger.debug(" > Roll Not Mine")
+            logger.debug("> Roll Not Mine")
             return
 
         early_claim_criteria = self.config.mudae.claim.earlyClaim
@@ -164,27 +164,27 @@ class AutoMudaeAgent(discord.Client):
                 current_time = datetime.now(tz=timezone.utc)
                 time_to_claim = (current_time - roll.message.created_at).total_seconds()
                 logger.info(
-                    f" > Early Claim: {roll.character} - Reaction Time: {time_to_claim:.2f}s"
+                    f"> Early Claim: {roll.character} - Reaction Time: {time_to_claim:.2f}s"
                 )
                 await roll.claim()
             async with self.command_rate_limiter:
                 await self.mudae_channel.send("$tu")
             return
-        logger.debug(" > Failed Early Claim Criteria")
+        logger.debug("> Failed Early Claim Criteria")
 
         if not self.timer_status.next_hour_is_reset:
-            logger.debug(" > Next Hour is Not Reset")
+            logger.debug("> Next Hour is Not Reset")
             return
 
         if self.late_claim_best_pick is None:
-            logger.debug(" > Overriding Late Claim Best Pick: Best Pick is None")
+            logger.debug("> Overriding Late Claim Best Pick: Best Pick is None")
             self.late_claim_best_pick = roll
         elif roll.wished_by is not None:
-            logger.debug(" > Overriding Late Claim Best Pick: Wished by Someone")
+            logger.debug("> Overriding Late Claim Best Pick: Wished by Someone")
             self.late_claim_best_pick = roll
         elif self.late_claim_best_pick.kakera_value <= roll.kakera_value:
             logger.debug(
-                " > Overriding Late Claim Best Pick: Roll Has More Kakera Value"
+                "> Overriding Late Claim Best Pick: Roll Has More Kakera Value"
             )
             self.late_claim_best_pick = roll
 
@@ -195,13 +195,13 @@ class AutoMudaeAgent(discord.Client):
                 late_claim_criteria, self.user
             )
         ):
-            logger.debug(" > Failed Late Claim Criteria")
-            logger.debug(" > Clearing Late Claim Best Pick")
+            logger.debug("> Failed Late Claim Criteria")
+            logger.debug("> Clearing Late Claim Best Pick")
             self.late_claim_best_pick = None
             return
 
         if self.timer_status.rolls_left != 0:
-            logger.debug(" > Rolls Not 0 Yet")
+            logger.debug("> Rolls Not 0 Yet")
             return
 
         async with self.react_rate_limiter:
@@ -210,7 +210,7 @@ class AutoMudaeAgent(discord.Client):
                 current_time - self.late_claim_best_pick.message.created_at
             ).total_seconds()
             logger.info(
-                f" > Late Claim: {self.late_claim_best_pick.character} - Reaction Time: {time_to_claim:.2f}s"
+                f"> Late Claim: {self.late_claim_best_pick.character} - Reaction Time: {time_to_claim:.2f}s"
             )
             await self.late_claim_best_pick.claim()
         async with self.command_rate_limiter:
@@ -221,36 +221,36 @@ class AutoMudaeAgent(discord.Client):
     async def handle_kakera_react(self, roll: MudaeKakeraRoll) -> None:
 
         if not self.user:
-            logger.warning(" > Not Logged In")
+            logger.warning("> Not Logged In")
             return
 
         if not self.mudae_channel:
-            logger.warning(" > Mudae Channel Unavailable")
+            logger.warning("> Mudae Channel Unavailable")
             return
 
         if not self.timer_status:
-            logger.warning(" > Timer Status Unavailable")
+            logger.warning("> Timer Status Unavailable")
             return
 
         if not self.timer_status.can_kakera_react:
-            logger.info(" > Cannot Kakera React")
+            logger.info("> Cannot Kakera React")
             return
 
         current_time = datetime.now(tz=timezone.utc)
         roll_time_elapsed = current_time - roll.message.created_at
         if roll_time_elapsed.total_seconds() >= 30:
-            logger.debug(" > Roll older than 30 seconds")
+            logger.debug("> Roll older than 30 seconds")
             return
 
         roll_is_mine = roll.owner.id == self.user.id
         if not roll_is_mine:
-            logger.debug(" > Roll Not Mine")
+            logger.debug("> Roll Not Mine")
             return
 
         current_time = datetime.now(tz=timezone.utc)
         time_to_claim = (current_time - roll.message.created_at).total_seconds()
         logger.info(
-            f" > Kakera React: {roll.buttons} - Reaction Time: {time_to_claim:.2f}s"
+            f"> Kakera React: {roll.buttons} - Reaction Time: {time_to_claim:.2f}s"
         )
         async with self.react_rate_limiter:
             await roll.kakera_react()
