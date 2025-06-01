@@ -27,6 +27,17 @@ class MudaeRollCommand(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    def __repr__(self) -> str:
+
+        return (
+            f"{self.__class__.__name__}("
+            f"owner={self.owner.name!r}, "
+            f"owner={self.command!r})"
+        )
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
     @classmethod
     def create(cls, message: discord.Message):
         if message.content not in get_args(MudaeRollCommandType):
@@ -48,6 +59,13 @@ class MudaeFailedRollCommand(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+    def __repr__(self) -> str:
+
+        return f"{self.__class__.__name__}(owner={self.owner.name!r})"
+
+    def __str__(self) -> str:
+        return self.__repr__()
 
     @classmethod
     async def create(
@@ -91,17 +109,17 @@ class MudaeClaimableRoll(BaseModel):
 
     def __repr__(self) -> str:
         if self.wished_by:
-            wished_by = self.wished_by.display_name
+            wished_by = self.wished_by.name
         else:
             wished_by = None
 
         return (
             f"{self.__class__.__name__}("
-            f"owner={self.owner.display_name}, "
+            f"owner={self.owner.name!r}, "
             f"character={self.character!r}, "
             f"series={self.series!r}, "
             f"kakera_value={self.kakera_value}, "
-            f"wished_by={wished_by})"
+            f"wished_by={wished_by!r})"
         )
 
     def __str__(self) -> str:
@@ -223,7 +241,7 @@ class MudaeKakeraRoll(BaseModel):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}("
-            f"owner={self.owner.display_name}, "
+            f"owner={self.owner.name!r}, "
             f"buttons={[button.emoji.name for button in self.buttons if button.emoji]})"
         )
 

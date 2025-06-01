@@ -24,7 +24,7 @@ class MudaeTimerStatus(BaseModel):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}("
-            f"owner={self.owner.display_name}, "
+            f"owner={self.owner.name!r}, "
             f"can_claim={self.can_claim}, "
             f"rolls_left={self.rolls_left}, "
             f"can_kakera_react={self.can_kakera_react}, "
@@ -38,7 +38,7 @@ class MudaeTimerStatus(BaseModel):
     async def create(cls, message: discord.Message, current_user: MudaeTimerOwner):
         clean_msg = discord.utils.remove_markdown(message.content)
 
-        is_my_message = clean_msg.startswith(current_user.display_name)
+        is_my_message = clean_msg.startswith(current_user.name)
         is_mudae_timer_list_msg = "=> $tuarrange" in clean_msg
         if not (is_my_message and is_mudae_timer_list_msg):
             return None
