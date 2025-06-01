@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from automudae.config import ClaimCriteria
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 MUDAE_TIMEOUT_SEC = 0.5
 MudaeRollOwner = (
@@ -29,9 +30,7 @@ class MudaeRollCommand(BaseModel):
     @classmethod
     def create(cls, message: discord.Message):
         if message.content not in get_args(MudaeRollCommandType):
-            logger.debug(
-                f"{message.content} is not in {get_args(MudaeRollCommandType)}"
-            )
+            logger.debug(f"Message is not in {get_args(MudaeRollCommandType)}")
             return None
 
         return MudaeRollCommand(

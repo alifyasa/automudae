@@ -34,6 +34,7 @@ class AutoMudaeAgent(discord.Client):
         self.mudae_claimable_rolls = MudaeClaimableRolls()
         self.mudae_kakera_rolls = MudaeKakeraRolls()
         self.timer_status: MudaeTimerStatus | None = None
+        self.message_handling_rate_limiter = AsyncLimiter(1, 0.2)
         self.react_rate_limiter = AsyncLimiter(1, 0.25)
         self.command_rate_limiter = AsyncLimiter(1, 1.75)
         self.tasks: list[asyncio.Task[None]] = []
@@ -71,45 +72,54 @@ class AutoMudaeAgent(discord.Client):
         if message.channel.id != self.config.discord.channelId:
             return
 
-        roll_command = MudaeRollCommand.create(message)
-        if roll_command is not None:
-            await self.mudae_roll_commands.put(roll_command)
-            logger.debug(
-                f"[CMD] {roll_command.command} from {roll_command.owner.display_name}"
+        async with self.message_handling_rate_limiter:
+
+            logger.debug(message)
+
+            roll_command = MudaeRollCommand.create(message)
+            if roll_command is not None:
+                await self.mudae_roll_commands.put(roll_command)
+                logger.debug(
+                    f"[CMD] {roll_command.command} from {roll_command.owner.display_name}"
+                )
+                return
+
+            claimable_roll = await MudaeClaimableRoll.create(
+                message, self.mudae_roll_commands
             )
-            return
+            if claimable_roll is not None:
+                await self.mudae_claimable_rolls.put(claimable_roll)
+                logger.info(claimable_roll)
+                return
 
-        claimable_roll = await MudaeClaimableRoll.create(
-            message, self.mudae_roll_commands
-        )
-        if claimable_roll is not None:
-            await self.mudae_claimable_rolls.put(claimable_roll)
-            logger.info(claimable_roll)
-            return
-
-        kakera_roll = await MudaeKakeraRoll.create(message, self.mudae_roll_commands)
-        if kakera_roll is not None:
-            await self.mudae_kakera_rolls.put(kakera_roll)
-            logger.info(kakera_roll)
-            return
-
-        failed_roll_command = await MudaeFailedRollCommand.create(
-            message, self.mudae_roll_commands
-        )
-        if failed_roll_command is not None:
-            logger.debug(
-                f"[CMD] Failed Roll Command from {failed_roll_command.owner.display_name}"
+            kakera_roll = await MudaeKakeraRoll.create(
+                message, self.mudae_roll_commands
             )
-            return
+            if kakera_roll is not None:
+                await self.mudae_kakera_rolls.put(kakera_roll)
+                logger.info(kakera_roll)
+                return
 
-        timer_status = await MudaeTimerStatus.create(message, self.user)
-        if timer_status is not None:
-            self.timer_status = timer_status
-            logger.info(self.timer_status)
-            return
+            failed_roll_command = await MudaeFailedRollCommand.create(
+                message, self.mudae_roll_commands
+            )
+            if failed_roll_command is not None:
+                logger.debug(
+                    f"[CMD] Failed Roll Command from {failed_roll_command.owner.display_name}"
+                )
+                return
+
+            timer_status = await MudaeTimerStatus.create(message, self.user)
+            if timer_status is not None:
+                self.timer_status = timer_status
+                logger.info(self.timer_status)
+                return
 
     @tasks.loop(
-        time=[time(hour=hour, minute=20, tzinfo=timezone.utc) for hour in range(24)]
+        time=[
+            time(hour=hour, minute=30, second=5, tzinfo=timezone.utc)
+            for hour in range(24)
+        ]
     )
     async def timer_status_loop(self) -> None:
         if not self.mudae_channel:
