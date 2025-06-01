@@ -253,6 +253,8 @@ class MudaeKakeraRoll(BaseModel):
                 if "kakera" not in child.emoji.name:
                     continue
                 buttons.append(child)
+        if len(buttons) == 0:
+            return None
 
         owner: MudaeRollOwner
         if message.interaction:
