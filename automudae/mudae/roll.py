@@ -32,7 +32,7 @@ class MudaeRollCommand(BaseModel):
         return (
             f"{self.__class__.__name__}("
             f"owner={self.owner.name!r}, "
-            f"owner={self.command!r})"
+            f"command={self.command!r})"
         )
 
     def __str__(self) -> str:
