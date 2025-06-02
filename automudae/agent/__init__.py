@@ -65,6 +65,8 @@ class AutoMudaeAgent(discord.Client):
         if message.channel.id != self.config.discord.channelId:
             return
 
+        logger.debug(f"Received Message {message.id}")
+
         roll_command = MudaeRollCommand.create(message)
         if roll_command is not None:
             await self.mudae_roll_commands.put(roll_command)
@@ -245,7 +247,7 @@ class AutoMudaeAgent(discord.Client):
         current_time = datetime.now(tz=timezone.utc)
         time_to_claim = (current_time - roll.message.created_at).total_seconds()
         logger.info(
-            f"> Kakera React: {roll.buttons} - Reaction Time: {time_to_claim:.2f}s"
+            f"> Kakera React: {[button.emoji.name for button in roll.buttons if button.emoji]} - Reaction Time: {time_to_claim:.2f}s"
         )
         async with self.react_rate_limiter:
             await roll.kakera_react()
