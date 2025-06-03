@@ -129,7 +129,7 @@ class MudaeClaimableRoll(BaseModel):
         if self.wished_by is None:
             await self.message.add_reaction("❤️")
             return None
-        elif not self.message.components:
+        if not self.message.components:
             return None
         for component in self.message.components:
             if not isinstance(component, discord.ActionRow):
@@ -182,7 +182,8 @@ class MudaeClaimableRoll(BaseModel):
         )
         if not series_kakera_match:
             logger.error(
-                "Not a Mudae Roll: No Series Name or No Kakera Value. Maybe use $togglekakerarolls?"
+                "Not a Mudae Roll: No Series Name or No Kakera Value. "
+                "Maybe use $togglekakerarolls?"
             )
             return None
 
