@@ -260,7 +260,11 @@ class MudaeKakeraRoll(BaseModel):
         if not message.components:
             return None
 
-        buttons = get_buttons(message)
+        buttons = [
+            button
+            for button in get_buttons(message)
+            if button.emoji and "kakera" in button.emoji.name
+        ]
         if len(buttons) == 0:
             return None
 

@@ -11,7 +11,5 @@ def get_buttons(message: discord.Message):
                 continue
             if not child.emoji:
                 continue
-            if "kakera" not in child.emoji.name:
-                continue
             buttons.append(child)
     return buttons
