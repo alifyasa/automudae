@@ -29,12 +29,12 @@ class AutoMudaeAgent(discord.Client):
 
         self.mudae_channel: discord.TextChannel | None = None
         self.mudae_roll_commands = MudaeRollCommands()
-        self.timer_status: MudaeTimerStatus | None = None
-        self.timer_status_lock = asyncio.Lock()
         self.react_rate_limiter = AsyncLimiter(1, 0.25)
         self.command_rate_limiter = AsyncLimiter(1, 1.75)
         self.tasks: list[asyncio.Task[None]] = []
         self.late_claim_best_pick: MudaeClaimableRoll | None = None
+
+        self.timer_status = MudaeTimerStatus()
 
         logger.info("AutoMudae Agent Initialization Complete")
 
@@ -53,8 +53,7 @@ class AutoMudaeAgent(discord.Client):
             self.timer_status_loop.start(),
         ]
 
-        async with self.command_rate_limiter:
-            await self.mudae_channel.send("$tu")
+        await self.send_timer_status_message()
 
         logger.info("AutoMudae Agent is Ready")
 
@@ -95,12 +94,18 @@ class AutoMudaeAgent(discord.Client):
             logger.debug(failed_roll_command)
             return
 
-        timer_status = await MudaeTimerStatus.create(message, self.user)
-        if timer_status is not None:
-            async with self.timer_status_lock:
-                self.timer_status = timer_status
+        if message.author.id == self.user.id:
+            timer_status = await MudaeTimerStatus.create(message)
+            if timer_status is not None:
+                await self.timer_status.update(timer_status)
                 logger.info(self.timer_status)
+                return
+
+    async def send_timer_status_message(self) -> None:
+        if not self.mudae_channel:
             return
+        async with self.command_rate_limiter:
+            await self.mudae_channel.send("$tu")
 
     @tasks.loop(
         time=[
@@ -109,11 +114,7 @@ class AutoMudaeAgent(discord.Client):
         ]
     )
     async def timer_status_loop(self) -> None:
-        if not self.mudae_channel:
-            return
-        async with self.timer_status_lock:
-            async with self.command_rate_limiter:
-                await self.mudae_channel.send("$tu")
+        await self.send_timer_status_message()
 
     async def handle_claim(self, roll: MudaeClaimableRoll) -> None:
 
@@ -125,7 +126,7 @@ class AutoMudaeAgent(discord.Client):
             logger.warning("> Not Claiming: Mudae Channel Unavailable")
             return
 
-        async with self.timer_status_lock:
+        async with self.timer_status.lock:
 
             if not self.timer_status:
                 logger.warning("> Not Claiming: Timer Status Not Available")
@@ -234,7 +235,7 @@ class AutoMudaeAgent(discord.Client):
             logger.warning("> Mudae Channel Unavailable")
             return
 
-        async with self.timer_status_lock:
+        async with self.timer_status.lock:
 
             if not self.timer_status:
                 logger.warning("> Timer Status Unavailable")
@@ -275,7 +276,7 @@ class AutoMudaeAgent(discord.Client):
         if not self.mudae_channel:
             return
 
-        async with self.timer_status_lock:
+        async with self.timer_status.lock:
 
             if not self.timer_status:
                 return

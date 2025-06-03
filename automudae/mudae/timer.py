@@ -1,8 +1,10 @@
 import logging
+import asyncio
 import re
+from typing import Self
 
 import discord
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -12,11 +14,13 @@ MudaeTimerOwner = (
 
 
 class MudaeTimerStatus(BaseModel):
-    can_claim: bool
-    rolls_left: int
-    can_kakera_react: bool
-    next_hour_is_reset: bool
-    owner: MudaeTimerOwner
+
+    can_claim: bool = False
+    rolls_left: int = 0
+    can_kakera_react: bool = False
+    next_hour_is_reset: bool = False
+
+    lock: asyncio.Lock = Field(default_factory=asyncio.Lock)
 
     class Config:
         arbitrary_types_allowed = True
@@ -24,7 +28,6 @@ class MudaeTimerStatus(BaseModel):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}("
-            f"owner={self.owner.name!r}, "
             f"can_claim={self.can_claim}, "
             f"rolls_left={self.rolls_left}, "
             f"can_kakera_react={self.can_kakera_react}, "
@@ -35,12 +38,11 @@ class MudaeTimerStatus(BaseModel):
         return self.__repr__()
 
     @classmethod
-    async def create(cls, message: discord.Message, current_user: MudaeTimerOwner):
+    async def create(cls, message: discord.Message):
         clean_msg = discord.utils.remove_markdown(message.content)
 
-        is_my_message = clean_msg.startswith(current_user.name)
         is_mudae_timer_list_msg = "=> $tuarrange" in clean_msg
-        if not (is_my_message and is_mudae_timer_list_msg):
+        if not (is_mudae_timer_list_msg):
             return None
 
         claim_pattern = re.search(r"you (can|can\'t) claim", clean_msg)
@@ -71,9 +73,15 @@ class MudaeTimerStatus(BaseModel):
         next_claim_reset_in_minutes = claim_reset_hours * 60 + claim_reset_minutes
 
         return MudaeTimerStatus(
-            owner=current_user,
             can_claim=claim_pattern.group(1) == "can",
             rolls_left=int(rolls_pattern.group(1)) if rolls_pattern.group(1) else 0,
             can_kakera_react=kakera_pattern.group(1) == "can",
             next_hour_is_reset=next_claim_reset_in_minutes <= 60,
         )
+
+    async def update(self, new_timer_status: Self) -> None:
+        async with self.lock:
+            self.can_claim = new_timer_status.can_claim
+            self.rolls_left = new_timer_status.rolls_left
+            self.can_kakera_react = new_timer_status.can_kakera_react
+            self.next_hour_is_reset = new_timer_status.next_hour_is_reset
