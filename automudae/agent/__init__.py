@@ -193,7 +193,9 @@ class AutoMudaeAgent(discord.Client):
                 self.late_claim_best_pick = roll
 
             late_claim_criteria = self.config.mudae.claim.lateClaim
-            if self.late_claim_best_pick.is_qualified(late_claim_criteria, self.user):
+            if not self.late_claim_best_pick.is_qualified(
+                late_claim_criteria, self.user
+            ):
                 logger.debug("> Failed Late Claim Criteria")
                 logger.debug("> Clearing Late Claim Best Pick")
                 self.late_claim_best_pick = None
