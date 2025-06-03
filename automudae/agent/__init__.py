@@ -94,12 +94,11 @@ class AutoMudaeAgent(discord.Client):
             logger.debug(failed_roll_command)
             return
 
-        if message.author.id == self.user.id:
-            timer_status = await MudaeTimerStatus.create(message)
-            if timer_status is not None:
-                await self.timer_status.update(timer_status)
-                logger.info(self.timer_status)
-                return
+        timer_status = await MudaeTimerStatus.create(message, self.user)
+        if timer_status is not None:
+            await self.timer_status.update(timer_status)
+            logger.info(self.timer_status)
+            return
 
     async def send_timer_status_message(self) -> None:
         if not self.mudae_channel:

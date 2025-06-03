@@ -7,6 +7,7 @@ import discord
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 MudaeTimerOwner = (
     discord.User | discord.ClientUser | discord.Member | discord.user.BaseUser
@@ -38,11 +39,12 @@ class MudaeTimerStatus(BaseModel):
         return self.__repr__()
 
     @classmethod
-    async def create(cls, message: discord.Message):
+    async def create(cls, message: discord.Message, current_user: MudaeTimerOwner):
         clean_msg = discord.utils.remove_markdown(message.content)
 
+        is_my_message = clean_msg.startswith(current_user.name)
         is_mudae_timer_list_msg = "=> $tuarrange" in clean_msg
-        if not (is_mudae_timer_list_msg):
+        if not (is_mudae_timer_list_msg and is_my_message):
             return None
 
         claim_pattern = re.search(r"you (can|can\'t) claim", clean_msg)
