@@ -47,9 +47,19 @@ class AutoMudaeAgent(discord.Client):
             return
         self.mudae_channel = mudae_channel
 
+        reset_minute_offset = self.config.mudae.roll.rollResetMinuteOffset
+        hourly_roll_loop = tasks.loop(
+            time=[
+                time(
+                    hour=hour, minute=reset_minute_offset, second=5, tzinfo=timezone.utc
+                )
+                for hour in range(24)
+            ]
+        )
+
         self.tasks = [
             self.roll_loop.start(),
-            self.timer_status_loop.start(),
+            hourly_roll_loop(self.send_timer_status_message).start(),
         ]
 
         await self.send_timer_status_message()
@@ -102,15 +112,6 @@ class AutoMudaeAgent(discord.Client):
             return
         async with self.command_rate_limiter:
             await self.mudae_channel.send("$tu")
-
-    @tasks.loop(
-        time=[
-            time(hour=hour, minute=30, second=5, tzinfo=timezone.utc)
-            for hour in range(24)
-        ]
-    )
-    async def timer_status_loop(self) -> None:
-        await self.send_timer_status_message()
 
     async def handle_claim(self, roll: MudaeClaimableRoll) -> None:
 
