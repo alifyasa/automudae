@@ -6,6 +6,7 @@
     "editor.wordWrap": "on",
     "editor.minimap.enabled": false,
     "editor.renderWhitespace": "all",
+    "editor.formatOnSave": true,
     "editor.rulers": [
         88,
         120
@@ -16,7 +17,8 @@
     "files.autoSave": "onFocusChange",
     // Terminal
     "terminal.integrated.scrollback": 10000,
-    // JSON formatting
+    // Formatter
+    "editor.defaultFormatter": "ms-python.black-formatter",
     "[json]": {
         "editor.defaultFormatter": "vscode.json-language-features"
     },
