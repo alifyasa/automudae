@@ -64,8 +64,6 @@ class AutoMudaeAgent(discord.Client):
         if message.channel.id != self.config.discord.channelId:
             return
 
-        logger.debug("Received Message %i", message.id)
-
         roll_command = MudaeRollCommand.create(message)
         if roll_command is not None:
             await self.mudae_roll_commands.put(roll_command)
