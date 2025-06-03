@@ -33,7 +33,6 @@ class AutoMudaeAgent(discord.Client):
         self.command_rate_limiter = AsyncLimiter(1, 1.75)
         self.tasks: list[asyncio.Task[None]] = []
         self.late_claim_best_pick: MudaeClaimableRoll | None = None
-
         self.timer_status = MudaeTimerStatus()
 
         logger.info("AutoMudae Agent Initialization Complete")
