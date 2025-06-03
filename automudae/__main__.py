@@ -7,7 +7,6 @@ Automatically Play Mudae
 import yaml
 
 from automudae.agent import AutoMudaeAgent
-from automudae.args import parser
 from automudae.config import Config
 
 
