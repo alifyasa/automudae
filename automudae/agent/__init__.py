@@ -234,10 +234,6 @@ class AutoMudaeAgent(discord.Client):
                 logger.warning("> Timer Status Unavailable")
                 return
 
-            if not self.timer_status.can_kakera_react:
-                logger.info("> Cannot Kakera React")
-                return
-
             current_time = datetime.now(tz=timezone.utc)
             roll_time_elapsed = current_time - roll.message.created_at
             if roll_time_elapsed.total_seconds() >= 30:
@@ -249,11 +245,18 @@ class AutoMudaeAgent(discord.Client):
                 logger.debug("> Roll Not Mine")
                 return
 
-            current_time = datetime.now(tz=timezone.utc)
-            time_to_claim = (current_time - roll.message.created_at).total_seconds()
             kakera_buttons = [
                 button.emoji.name for button in roll.buttons if button.emoji
             ]
+            if (
+                "kakeraP" not in kakera_buttons
+                and not self.timer_status.can_kakera_react
+            ):
+                logger.info("> Cannot react to non-purple kakera")
+                return
+
+            current_time = datetime.now(tz=timezone.utc)
+            time_to_claim = (current_time - roll.message.created_at).total_seconds()
             logger.info("> Kakera React: %s", kakera_buttons)
             logger.info("> Reaction Time: %.2fs", time_to_claim)
             async with self.react_rate_limiter:
