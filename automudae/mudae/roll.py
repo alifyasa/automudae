@@ -2,12 +2,14 @@
 import logging
 import re
 from asyncio import Queue
+from datetime import datetime
 from typing import Literal, get_args
 
 import discord
 from pydantic import BaseModel
 
 from automudae.config import ClaimCriteria
+from automudae.mudae.helper import get_buttons
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -55,6 +57,22 @@ class MudaeRollCommand(BaseModel):
 MudaeRollCommands = Queue[MudaeRollCommand]
 
 
+async def get_roll_command(queue: MudaeRollCommands, message_time: datetime):
+    roll_command = None
+    while not queue.empty():
+        roll_command = await queue.get()
+        try:
+            reply_interval = (
+                message_time - roll_command.message.created_at
+            ).total_seconds()
+            if reply_interval <= MUDAE_TIMEOUT_SEC:
+                break
+        finally:
+            queue.task_done()
+    assert roll_command
+    return roll_command
+
+
 class MudaeFailedRollCommand(BaseModel):
     owner: MudaeRollOwner
 
@@ -82,16 +100,9 @@ class MudaeFailedRollCommand(BaseModel):
         if message.interaction:
             owner = message.interaction.user
         else:
-            while True:
-                roll_command = await roll_commands_queue.get()
-                try:
-                    reply_interval = (
-                        message.created_at - roll_command.message.created_at
-                    ).total_seconds()
-                    if reply_interval <= MUDAE_TIMEOUT_SEC:
-                        break
-                finally:
-                    roll_commands_queue.task_done()
+            roll_command = await get_roll_command(
+                roll_commands_queue, message.created_at
+            )
             owner = roll_command.owner
         return MudaeFailedRollCommand(owner=owner)
 
@@ -132,15 +143,8 @@ class MudaeClaimableRoll(BaseModel):
             return None
         if not self.message.components:
             return None
-        for component in self.message.components:
-            if not isinstance(component, discord.ActionRow):
-                continue
-            for child in component.children:
-                if not isinstance(child, discord.Button):
-                    continue
-                if not child.emoji:
-                    continue
-                await child.click()
+        for button in get_buttons(self.message):
+            await button.click()
 
     def is_qualified(self, criteria: ClaimCriteria, user: MudaeRollOwner) -> bool:
         character_qualify = self.character in criteria.character
@@ -188,14 +192,16 @@ class MudaeClaimableRoll(BaseModel):
             )
             return None
 
-        series_name = str(series_kakera_match.group(1))
-        series_name = re.sub(r"[\r\n]+", " ", series_name)
+        series_name = (
+            str(series_kakera_match.group(1))
+            .replace("\r\n", " ")
+            .replace("\n", " ")
+            .replace("\r", " ")
+            .strip()
+        )
         series_name = re.sub(r"\s+", " ", series_name)
-        series_name = series_name.strip()
 
-        kakera_value_str = str(series_kakera_match.group(2))
-        kakera_value_str = re.sub(",", "", kakera_value_str)
-        kakera_value = int(kakera_value_str)
+        kakera_value_str = str(series_kakera_match.group(2)).replace(",", "")
 
         msg_is_wished_by = re.search(r"Wished by <@([\d]+)>", message.content)
         wished_by = None
@@ -223,7 +229,7 @@ class MudaeClaimableRoll(BaseModel):
             message=message,
             character=embed.author.name,
             series=series_name,
-            kakera_value=kakera_value,
+            kakera_value=int(kakera_value_str),
             wished_by=wished_by,
         )
 
@@ -261,18 +267,7 @@ class MudaeKakeraRoll(BaseModel):
         if not message.components:
             return None
 
-        buttons: list[discord.Button] = []
-        for component in message.components:
-            if not isinstance(component, discord.ActionRow):
-                continue
-            for child in component.children:
-                if not isinstance(child, discord.Button):
-                    continue
-                if not child.emoji:
-                    continue
-                if "kakera" not in child.emoji.name:
-                    continue
-                buttons.append(child)
+        buttons = get_buttons(message)
         if len(buttons) == 0:
             return None
 
@@ -280,16 +275,16 @@ class MudaeKakeraRoll(BaseModel):
         if message.interaction:
             owner = message.interaction.user
         else:
-            while True:
+            roll_command = None
+            while not roll_commands_queue.empty():
                 roll_command = await roll_commands_queue.get()
-                try:
-                    reply_interval = (
-                        message.created_at - roll_command.message.created_at
-                    ).total_seconds()
-                    if reply_interval <= MUDAE_TIMEOUT_SEC:
-                        break
-                finally:
-                    roll_commands_queue.task_done()
+                reply_interval = (
+                    message.created_at - roll_command.message.created_at
+                ).total_seconds()
+                if reply_interval <= MUDAE_TIMEOUT_SEC:
+                    break
+                roll_commands_queue.task_done()
+            assert roll_command
             owner = roll_command.owner
 
         return MudaeKakeraRoll(owner=owner, message=message, buttons=buttons)

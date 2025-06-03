@@ -1,3 +1,4 @@
+# pylint: disable=R0903
 import asyncio
 import logging
 import re
