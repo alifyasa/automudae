@@ -60,7 +60,7 @@ class MudaeTimerStatus(BaseModel):
             return None
 
         claim_reset_pattern = re.search(
-            r"(?:The next claim reset is in|you can't claim for another)\s+(?:(\d+)h\s*)?(\d+)\s*min",
+            r"(?:The next claim reset is in|you can't claim for another)\s+(?:(\d+)h\s*)?(\d+)\s*min",  # pylint: disable=C0301
             clean_msg,
         )
         if not claim_reset_pattern:
