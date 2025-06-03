@@ -24,6 +24,7 @@ class RollConfig(BaseModel):
     command: Literal["$wg", "$wa", "$w"]
     doNotRollWhenCanotClaim: bool = True
     doNotRollWhenCannotKakeraReact: bool = False
+    rollResetMinuteOffset: int = 0
 
 
 class MudaeConfig(BaseModel):
