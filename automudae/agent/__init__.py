@@ -161,7 +161,10 @@ class AutoMudaeAgent(discord.Client):
                 return
 
             early_claim_criteria = self.config.mudae.claim.earlyClaim
-            if roll.is_qualified(early_claim_criteria, self.user):
+            if (
+                roll.is_qualified(early_claim_criteria, self.user)
+                or roll.wished_by is not None
+            ):
                 async with self.react_rate_limiter:
                     current_time = datetime.now(tz=timezone.utc)
                     time_to_claim = (
@@ -192,12 +195,7 @@ class AutoMudaeAgent(discord.Client):
                 self.late_claim_best_pick = roll
 
             late_claim_criteria = self.config.mudae.claim.lateClaim
-            if (
-                self.late_claim_best_pick.wished_by is not None
-                and not self.late_claim_best_pick.is_qualified(
-                    late_claim_criteria, self.user
-                )
-            ):
+            if self.late_claim_best_pick.is_qualified(late_claim_criteria, self.user):
                 logger.debug("> Failed Late Claim Criteria")
                 logger.debug("> Clearing Late Claim Best Pick")
                 self.late_claim_best_pick = None
