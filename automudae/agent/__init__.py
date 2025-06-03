@@ -148,9 +148,8 @@ class AutoMudaeAgent(discord.Client):
                     time_to_claim = (
                         current_time - roll.message.created_at
                     ).total_seconds()
-                    logger.info(
-                        f"> Snipe: {roll.character} - Reaction Time: {time_to_claim:.2f}s"
-                    )
+                    logger.info(f"> Snipe: {roll.character}")
+                    logger.info(f"> Reaction Time: {time_to_claim:.2f}s")
                     await roll.claim()
                 async with self.command_rate_limiter:
                     await self.mudae_channel.send("$tu")
@@ -169,9 +168,8 @@ class AutoMudaeAgent(discord.Client):
                     time_to_claim = (
                         current_time - roll.message.created_at
                     ).total_seconds()
-                    logger.info(
-                        f"> Early Claim: {roll.character} - Reaction Time: {time_to_claim:.2f}s"
-                    )
+                    logger.info(f"> Early Claim: {roll.character}")
+                    logger.info(f"> Reaction Time: {time_to_claim:.2f}s")
                     await roll.claim()
                 async with self.command_rate_limiter:
                     await self.mudae_channel.send("$tu")
@@ -215,9 +213,8 @@ class AutoMudaeAgent(discord.Client):
                 time_to_claim = (
                     current_time - self.late_claim_best_pick.message.created_at
                 ).total_seconds()
-                logger.info(
-                    f"> Late Claim: {self.late_claim_best_pick.character} - Reaction Time: {time_to_claim:.2f}s"
-                )
+                logger.info(f"> Late Claim: {self.late_claim_best_pick.character}")
+                logger.info(f"> Reaction Time: {time_to_claim:.2f}s")
                 await self.late_claim_best_pick.claim()
             async with self.command_rate_limiter:
                 await self.mudae_channel.send("$tu")
@@ -257,9 +254,11 @@ class AutoMudaeAgent(discord.Client):
 
             current_time = datetime.now(tz=timezone.utc)
             time_to_claim = (current_time - roll.message.created_at).total_seconds()
-            logger.info(
-                f"> Kakera React: {[button.emoji.name for button in roll.buttons if button.emoji]} - Reaction Time: {time_to_claim:.2f}s"
-            )
+            kakera_buttons = [
+                button.emoji.name for button in roll.buttons if button.emoji
+            ]
+            logger.info(f"> Kakera React: {kakera_buttons}")
+            logger.info(f"> Reaction Time: {time_to_claim:.2f}s")
             async with self.react_rate_limiter:
                 await roll.kakera_react()
 
