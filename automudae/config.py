@@ -1,9 +1,3 @@
-"""
-AutoMudae Config
-
-All classes related to the bot's configuration
-"""
-
 from typing import Literal
 
 import yaml
@@ -11,9 +5,6 @@ from pydantic import BaseModel, Field
 
 
 class ClaimCriteria(BaseModel):
-    """
-    Criterias used in measuring whether a Claimable Roll should be claimed or not
-    """
 
     wish: bool = False
     character: list[str] = Field(default_factory=list[str])
@@ -22,9 +13,6 @@ class ClaimCriteria(BaseModel):
 
 
 class ClaimConfig(BaseModel):
-    """
-    Configures how and when should a roll be judged
-    """
 
     snipe: ClaimCriteria = ClaimCriteria()
     earlyClaim: ClaimCriteria = ClaimCriteria()
@@ -32,9 +20,6 @@ class ClaimConfig(BaseModel):
 
 
 class RollConfig(BaseModel):
-    """
-    Configures when and what to roll
-    """
 
     command: Literal["$wg", "$wa", "$w"]
     doNotRollWhenCanotClaim: bool = True
@@ -42,18 +27,12 @@ class RollConfig(BaseModel):
 
 
 class MudaeConfig(BaseModel):
-    """
-    AutoMudae Mudae Configuration
-    """
 
     roll: RollConfig
     claim: ClaimConfig
 
 
 class DiscordConfig(BaseModel):
-    """
-    AutoMudae Discord Configuration
-    """
 
     token: str
     channelId: int
@@ -69,9 +48,6 @@ class DiscordConfig(BaseModel):
 
 
 class Config(BaseModel):
-    """
-    AutoMudae Config
-    """
 
     name: str
     version: Literal[1]
@@ -80,9 +56,6 @@ class Config(BaseModel):
 
     @classmethod
     def from_file(cls, path: str = "config/config.yaml"):
-        """
-        Load config from file
-        """
 
         with open(path, "r", encoding="utf-8") as f:
             yaml_data = yaml.safe_load(f)

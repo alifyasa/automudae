@@ -1,9 +1,3 @@
-"""
-AutoMudae
-
-Automatically Play Mudae
-"""
-
 import yaml
 
 from automudae.agent import AutoMudaeAgent
@@ -11,7 +5,6 @@ from automudae.config import Config
 
 
 def main() -> None:
-    """Entry point for the AutoMudae Discord Bot"""
     config = Config.from_file()
 
     config_schema = yaml.dump(Config.model_json_schema())
