@@ -1,51 +1,35 @@
 {
-  // Editor Settings
-  "editor.tabSize": 4,
-  "editor.insertSpaces": true,
-  "editor.detectIndentation": false,
-  "editor.wordWrap": "on",
-  "editor.minimap.enabled": false,
-  "editor.formatOnSave": true,
-  "editor.renderWhitespace": "all",
-  "editor.rulers": [80, 120],
-
-  // Files
-  "files.trimTrailingWhitespace": true,
-  "files.insertFinalNewline": true,
-  "files.exclude": {
-    "**/.git": true,
-    "**/.DS_Store": true,
-    "**/node_modules": true,
-    "**/dist": true,
-    "**/__pycache__": true
-  },
-
-  // Search
-  "search.exclude": {
-    "**/node_modules": true,
-    "**/dist": true,
-    "**/__pycache__": true
-  },
-
-  // Terminal
-  "terminal.integrated.scrollback": 10000,
-
-  // Code Actions
-  "editor.codeActionsOnSave": {
-    "source.organizeImports": "always"
-  },
-
-  // JSON formatting
-  "[json]": {
-    "editor.defaultFormatter": "vscode.json-language-features"
-  },
-
-  // Default formatter (can be overridden per-language)
-"editor.defaultFormatter": "ms-python.black-formatter",
-"[dockerfile]": {
-    "editor.defaultFormatter": "ms-azuretools.vscode-containers"
-},
-"[ignore]": {
-    "editor.defaultFormatter": "foxundermoon.shell-format"
-}
+    // Editor Settings
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    "editor.wordWrap": "on",
+    "editor.minimap.enabled": false,
+    "editor.renderWhitespace": "all",
+    "editor.rulers": [
+        88,
+        120
+    ],
+    // Files
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.autoSave": "onFocusChange",
+    // Terminal
+    "terminal.integrated.scrollback": 10000,
+    // JSON formatting
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[dockerfile]": {
+        "editor.defaultFormatter": "ms-azuretools.vscode-containers"
+    },
+    "[ignore]": {
+        "editor.defaultFormatter": "foxundermoon.shell-format"
+    },
+    "[shellscript]": {
+        "editor.defaultFormatter": "foxundermoon.shell-format"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    }
 }
