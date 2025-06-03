@@ -12,14 +12,14 @@ function format() {
         --remove-duplicate-keys \
         --verbose \
         \;
-    isort automudae/
+    isort automudae/ --profile=black
     black automudae/
 }
 
 function lint() {
     echo "Running lint..."
     mypy automudae/
-
+    pylint automudae/
 }
 
 function check() {
