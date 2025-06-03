@@ -59,7 +59,7 @@ MudaeRollCommands = Queue[MudaeRollCommand]
 
 async def get_roll_command(queue: MudaeRollCommands, message_time: datetime):
     roll_command = None
-    while not queue.empty():
+    while True:
         roll_command = await queue.get()
         try:
             reply_interval = (
@@ -212,16 +212,9 @@ class MudaeClaimableRoll(BaseModel):
         if message.interaction:
             owner = message.interaction.user
         else:
-            while True:
-                roll_command = await roll_commands_queue.get()
-                try:
-                    reply_interval = (
-                        message.created_at - roll_command.message.created_at
-                    ).total_seconds()
-                    if reply_interval <= MUDAE_TIMEOUT_SEC:
-                        break
-                finally:
-                    roll_commands_queue.task_done()
+            roll_command = await get_roll_command(
+                roll_commands_queue, message.created_at
+            )
             owner = roll_command.owner
 
         return MudaeClaimableRoll(
@@ -275,16 +268,9 @@ class MudaeKakeraRoll(BaseModel):
         if message.interaction:
             owner = message.interaction.user
         else:
-            roll_command = None
-            while not roll_commands_queue.empty():
-                roll_command = await roll_commands_queue.get()
-                reply_interval = (
-                    message.created_at - roll_command.message.created_at
-                ).total_seconds()
-                if reply_interval <= MUDAE_TIMEOUT_SEC:
-                    break
-                roll_commands_queue.task_done()
-            assert roll_command
+            roll_command = await get_roll_command(
+                roll_commands_queue, message.created_at
+            )
             owner = roll_command.owner
 
         return MudaeKakeraRoll(owner=owner, message=message, buttons=buttons)
