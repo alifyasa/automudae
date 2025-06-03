@@ -65,7 +65,7 @@ class AutoMudaeAgent(discord.Client):
         if message.channel.id != self.config.discord.channelId:
             return
 
-        logger.debug(f"Received Message {message.id}")
+        logger.debug("Received Message %i", message.id)
 
         roll_command = MudaeRollCommand.create(message)
         if roll_command is not None:
@@ -148,8 +148,8 @@ class AutoMudaeAgent(discord.Client):
                     time_to_claim = (
                         current_time - roll.message.created_at
                     ).total_seconds()
-                    logger.info(f"> Snipe: {roll.character}")
-                    logger.info(f"> Reaction Time: {time_to_claim:.2f}s")
+                    logger.info("> Snipe: %s", roll.character)
+                    logger.info("> Reaction Time: %.2fs", time_to_claim)
                     await roll.claim()
                 async with self.command_rate_limiter:
                     await self.mudae_channel.send("$tu")
@@ -168,8 +168,8 @@ class AutoMudaeAgent(discord.Client):
                     time_to_claim = (
                         current_time - roll.message.created_at
                     ).total_seconds()
-                    logger.info(f"> Early Claim: {roll.character}")
-                    logger.info(f"> Reaction Time: {time_to_claim:.2f}s")
+                    logger.info("> Early Claim: %s", roll.character)
+                    logger.info("> Reaction Time: %.2fs", time_to_claim)
                     await roll.claim()
                 async with self.command_rate_limiter:
                     await self.mudae_channel.send("$tu")
@@ -213,8 +213,8 @@ class AutoMudaeAgent(discord.Client):
                 time_to_claim = (
                     current_time - self.late_claim_best_pick.message.created_at
                 ).total_seconds()
-                logger.info(f"> Late Claim: {self.late_claim_best_pick.character}")
-                logger.info(f"> Reaction Time: {time_to_claim:.2f}s")
+                logger.info("> Late Claim: %s", self.late_claim_best_pick.character)
+                logger.info("> Reaction Time: %.2fs", time_to_claim)
                 await self.late_claim_best_pick.claim()
             async with self.command_rate_limiter:
                 await self.mudae_channel.send("$tu")
@@ -257,8 +257,8 @@ class AutoMudaeAgent(discord.Client):
             kakera_buttons = [
                 button.emoji.name for button in roll.buttons if button.emoji
             ]
-            logger.info(f"> Kakera React: {kakera_buttons}")
-            logger.info(f"> Reaction Time: {time_to_claim:.2f}s")
+            logger.info("> Kakera React: %s", kakera_buttons)
+            logger.info("> Reaction Time: %.2fs", time_to_claim)
             async with self.react_rate_limiter:
                 await roll.kakera_react()
 

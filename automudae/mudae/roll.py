@@ -41,7 +41,7 @@ class MudaeRollCommand(BaseModel):
     @classmethod
     def create(cls, message: discord.Message):
         if message.content not in get_args(MudaeRollCommandType):
-            logger.debug(f"Message is not in {get_args(MudaeRollCommandType)}")
+            logger.debug("Message is not in %s", get_args(MudaeRollCommandType))
             return None
 
         return MudaeRollCommand(
