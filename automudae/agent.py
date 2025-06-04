@@ -152,6 +152,7 @@ class AutoMudaeAgent(discord.Client):
                     logger.info("> Snipe: %s", roll.character)
                     logger.info("> Reaction Time: %.2fs", time_to_claim)
                     await roll.claim()
+                    self.timer_status.can_claim = False
                 async with self.command_rate_limiter:
                     await self.mudae_channel.send("$tu")
                 return
@@ -175,6 +176,7 @@ class AutoMudaeAgent(discord.Client):
                     logger.info("> Early Claim: %s", roll.character)
                     logger.info("> Reaction Time: %.2fs", time_to_claim)
                     await roll.claim()
+                    self.timer_status.can_claim = False
                 async with self.command_rate_limiter:
                     await self.mudae_channel.send("$tu")
                 return
@@ -217,6 +219,8 @@ class AutoMudaeAgent(discord.Client):
                 logger.info("> Late Claim: %s", self.late_claim_best_pick.character)
                 logger.info("> Reaction Time: %.2fs", time_to_claim)
                 await self.late_claim_best_pick.claim()
+                self.timer_status.can_claim = False
+
             async with self.command_rate_limiter:
                 await self.mudae_channel.send("$tu")
 
@@ -267,6 +271,7 @@ class AutoMudaeAgent(discord.Client):
             logger.info("> Reaction Time: %.2fs", time_to_claim)
             async with self.react_rate_limiter:
                 await roll.kakera_react()
+                self.timer_status.can_kakera_react = False
 
             async with self.command_rate_limiter:
                 await self.mudae_channel.send("$tu")
@@ -303,6 +308,6 @@ class AutoMudaeAgent(discord.Client):
             async with self.command_rate_limiter:
                 await self.mudae_channel.send(self.config.mudae.roll.command)
 
-            if self.timer_status.rolls_left <= 0:
+            if self.timer_status.rolls_left <= 1:
                 async with self.command_rate_limiter:
                     await self.mudae_channel.send("$tu")
