@@ -126,6 +126,8 @@ class AutoMudaeAgent(discord.Client):
 
         async with self.timer_status.lock:
 
+            self.timer_status.rolls_left -= 1
+
             if not self.timer_status:
                 logger.warning("> Not Claiming: Timer Status Not Available")
                 return
@@ -232,6 +234,8 @@ class AutoMudaeAgent(discord.Client):
 
         async with self.timer_status.lock:
 
+            self.timer_status.rolls_left -= 1
+
             if not self.timer_status:
                 logger.warning("> Timer Status Unavailable")
                 return
@@ -298,7 +302,6 @@ class AutoMudaeAgent(discord.Client):
 
             async with self.command_rate_limiter:
                 await self.mudae_channel.send(self.config.mudae.roll.command)
-                self.timer_status.rolls_left -= 1
 
             if self.timer_status.rolls_left <= 0:
                 async with self.command_rate_limiter:
