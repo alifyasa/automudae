@@ -21,16 +21,22 @@ class ClaimConfig(BaseModel):
 
 class RollConfig(BaseModel):
 
-    command: Literal["$wg", "$wa", "$w"]
+    command: Literal["$wg", "$wa", "$w"] = "$w"
     doNotRollWhenCanotClaim: bool = True
     doNotRollWhenCannotKakeraReact: bool = False
     rollResetMinuteOffset: int = 0
 
 
+class KakeraReactConfig(BaseModel):
+
+    doNotReactToKakeraTypes: list[str] = Field(default_factory=list[str])
+
+
 class MudaeConfig(BaseModel):
 
-    roll: RollConfig
-    claim: ClaimConfig
+    roll: RollConfig = RollConfig()
+    claim: ClaimConfig = ClaimConfig()
+    kakeraReact: KakeraReactConfig = KakeraReactConfig()
 
 
 class DiscordConfig(BaseModel):

@@ -256,7 +256,11 @@ class AutoMudaeAgent(discord.Client):
                 return
 
             kakera_buttons = [
-                button.emoji.name for button in roll.buttons if button.emoji
+                button.emoji.name
+                for button in roll.buttons
+                if button.emoji is not None
+                and button.emoji.name
+                not in self.config.mudae.kakeraReact.doNotReactToKakeraTypes
             ]
             if (
                 "kakeraP" not in kakera_buttons
