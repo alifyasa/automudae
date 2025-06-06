@@ -1,3 +1,4 @@
+# pylint: disable=R0903
 from typing import Literal
 
 import yaml
@@ -60,6 +61,9 @@ class Config(BaseModel):
     version: Literal[1]
     discord: DiscordConfig
     mudae: MudaeConfig
+
+    class Config:
+        extra = "forbid"
 
     @classmethod
     def from_file(cls, path: str = "config/config.yaml"):
