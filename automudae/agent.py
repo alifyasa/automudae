@@ -183,16 +183,19 @@ class AutoMudaeAgent(discord.Client):
 
     async def handle_others_rolls_loop(self) -> None:
         while True:
-            result = await self.wait_for_roll(
-                {
-                    asyncio.create_task(self.state.others_claimable_roll_queue.get()),
-                    asyncio.create_task(self.state.others_kakera_roll_queue.get()),
-                }
-            )
-            if isinstance(result, MudaeClaimableRollResult):
-                await self.handle_claim(result)
-            elif isinstance(result, MudaeKakeraRollResult):
-                await self.handle_kakera_react(result)
+            async with self.state.timer_status.lock:
+                result = await self.wait_for_roll(
+                    {
+                        asyncio.create_task(
+                            self.state.others_claimable_roll_queue.get()
+                        ),
+                        asyncio.create_task(self.state.others_kakera_roll_queue.get()),
+                    }
+                )
+                if isinstance(result, MudaeClaimableRollResult):
+                    await self.handle_claim(result)
+                elif isinstance(result, MudaeKakeraRollResult):
+                    await self.handle_kakera_react(result)
 
     async def handle_claim(self, roll: MudaeClaimableRollResult) -> None:
 
