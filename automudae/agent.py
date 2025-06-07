@@ -299,43 +299,41 @@ class AutoMudaeAgent(discord.Client):
         assert self.user
         assert self.mudae_channel
 
-        async with self.state.timer_status.lock:
+        if not self.state.timer_status:
+            logger.warning("> Timer Status Unavailable")
+            return
 
-            if not self.state.timer_status:
-                logger.warning("> Timer Status Unavailable")
+        current_time = datetime.now(tz=timezone.utc)
+        roll_time_elapsed = current_time - roll.message.created_at
+        if roll_time_elapsed.total_seconds() >= 30:
+            logger.debug("> Roll older than 30 seconds")
+            return
+
+        roll_is_mine = roll.owner.id == self.user.id
+        if not roll_is_mine:
+            logger.debug("> Roll Not Mine")
+            return
+
+        kakera_buttons = [
+            button.emoji.name for button in roll.buttons if button.emoji is not None
+        ]
+        for button_name in kakera_buttons:
+            if button_name in self.config.mudae.kakeraReact.doNotReactToKakeraTypes:
+                logger.info("> Will not react to %s", button_name)
                 return
+        if (
+            "kakeraP" not in kakera_buttons
+            and not self.state.timer_status.can_kakera_react
+        ):
+            logger.info("> Cannot react to non-purple kakera")
+            return
 
-            current_time = datetime.now(tz=timezone.utc)
-            roll_time_elapsed = current_time - roll.message.created_at
-            if roll_time_elapsed.total_seconds() >= 30:
-                logger.debug("> Roll older than 30 seconds")
-                return
-
-            roll_is_mine = roll.owner.id == self.user.id
-            if not roll_is_mine:
-                logger.debug("> Roll Not Mine")
-                return
-
-            kakera_buttons = [
-                button.emoji.name for button in roll.buttons if button.emoji is not None
-            ]
-            for button_name in kakera_buttons:
-                if button_name in self.config.mudae.kakeraReact.doNotReactToKakeraTypes:
-                    logger.info("> Will not react to %s", button_name)
-                    return
-            if (
-                "kakeraP" not in kakera_buttons
-                and not self.state.timer_status.can_kakera_react
-            ):
-                logger.info("> Cannot react to non-purple kakera")
-                return
-
-            time_to_claim = self.get_reaction_time(roll)
-            logger.info("> Kakera React: %s", kakera_buttons)
-            logger.info("> Reaction Time: %.2fs", time_to_claim)
-            async with self.react_rate_limiter:
-                await roll.kakera_react()
-                self.state.timer_status.can_kakera_react = False
+        time_to_claim = self.get_reaction_time(roll)
+        logger.info("> Kakera React: %s", kakera_buttons)
+        logger.info("> Reaction Time: %.2fs", time_to_claim)
+        async with self.react_rate_limiter:
+            await roll.kakera_react()
+            self.state.timer_status.can_kakera_react = False
 
             await self.send_timer_status_message()
 
