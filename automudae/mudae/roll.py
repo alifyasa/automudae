@@ -21,11 +21,17 @@ MudaeRollOwner = (
 MudaeRollCommandType = Literal["$wg", "$wa", "$w", "$wx"]
 
 
-class MudaeRollCommand(BaseModel):
-
-    command: MudaeRollCommandType
+class MudaeRoll(BaseModel):
     owner: MudaeRollOwner
     message: discord.Message
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class MudaeRollCommand(MudaeRoll):
+
+    command: MudaeRollCommandType
 
     class Config:
         arbitrary_types_allowed = True
@@ -54,30 +60,21 @@ class MudaeRollCommand(BaseModel):
         )
 
 
-MudaeRollCommands = Queue[MudaeRollCommand]
-
-
-async def get_roll_command(queue: MudaeRollCommands, message_time: datetime):
-    roll_command = None
+async def get_roll_command(
+    queue: Queue[MudaeRollCommand], message_time: datetime
+) -> MudaeRollCommand:
     while True:
         roll_command = await queue.get()
         try:
-            reply_interval = (
+            if (
                 message_time - roll_command.message.created_at
-            ).total_seconds()
-            if reply_interval <= MUDAE_TIMEOUT_SEC:
-                break
+            ).total_seconds() <= MUDAE_TIMEOUT_SEC:
+                return roll_command
         finally:
             queue.task_done()
-    assert roll_command
-    return roll_command
 
 
-class MudaeFailedRollCommand(BaseModel):
-    owner: MudaeRollOwner
-
-    class Config:
-        arbitrary_types_allowed = True
+class MudaeRouletteLimitedError(MudaeRoll):
 
     def __repr__(self) -> str:
 
@@ -88,7 +85,7 @@ class MudaeFailedRollCommand(BaseModel):
 
     @classmethod
     async def create(
-        cls, message: discord.Message, roll_commands_queue: MudaeRollCommands
+        cls, message: discord.Message, roll_commands_queue: Queue[MudaeRollCommand]
     ):
         clean_msg_content = discord.utils.remove_markdown(message.content)
         if not re.findall(
@@ -104,27 +101,21 @@ class MudaeFailedRollCommand(BaseModel):
                 roll_commands_queue, message.created_at
             )
             owner = roll_command.owner
-        return MudaeFailedRollCommand(owner=owner)
+        return MudaeRouletteLimitedError(owner=owner, message=message)
 
 
-class MudaeClaimableRoll(BaseModel):
+class MudaeClaimableRollResult(MudaeRoll):
 
-    owner: MudaeRollOwner
-    message: discord.Message
     character: str
     series: str
     kakera_value: int
-    wished_by: MudaeRollOwner | None
+    wished_by: MudaeRollOwner | None = None
 
     class Config:
         arbitrary_types_allowed = True
 
     def __repr__(self) -> str:
-        if self.wished_by:
-            wished_by = self.wished_by.name
-        else:
-            wished_by = None
-
+        wished_by = self.wished_by.name if self.wished_by else None
         return (
             f"{self.__class__.__name__}("
             f"owner={self.owner.name!r}, "
@@ -140,9 +131,9 @@ class MudaeClaimableRoll(BaseModel):
     async def claim(self) -> None:
         if self.wished_by is None:
             await self.message.add_reaction("❤️")
-            return None
+            return
         if not self.message.components:
-            return None
+            return
         for button in get_buttons(self.message):
             await button.click()
 
@@ -204,9 +195,11 @@ class MudaeClaimableRoll(BaseModel):
         kakera_value_str = str(series_kakera_match.group(2)).replace(",", "")
 
         msg_is_wished_by = re.search(r"Wished by <@([\d]+)>", message.content)
-        wished_by = None
+        wished_by: MudaeRollOwner | None
         if msg_is_wished_by and message.guild:
             wished_by = await message.guild.fetch_member(int(msg_is_wished_by.group(1)))
+        else:
+            wished_by = None
 
         owner: MudaeRollOwner
         if message.interaction:
@@ -217,7 +210,7 @@ class MudaeClaimableRoll(BaseModel):
             )
             owner = roll_command.owner
 
-        return MudaeClaimableRoll(
+        return MudaeClaimableRollResult(
             owner=owner,
             message=message,
             character=embed.author.name,
@@ -227,13 +220,8 @@ class MudaeClaimableRoll(BaseModel):
         )
 
 
-MudaeClaimableRolls = Queue[MudaeClaimableRoll]
+class MudaeKakeraRollResult(MudaeRoll):
 
-
-class MudaeKakeraRoll(BaseModel):
-
-    owner: MudaeRollOwner
-    message: discord.Message
     buttons: list[discord.Button]
 
     class Config:
@@ -277,7 +265,7 @@ class MudaeKakeraRoll(BaseModel):
             )
             owner = roll_command.owner
 
-        return MudaeKakeraRoll(owner=owner, message=message, buttons=buttons)
+        return MudaeKakeraRollResult(owner=owner, message=message, buttons=buttons)
 
 
-MudaeKakeraRolls = Queue[MudaeKakeraRoll]
+MudaeRollResult = MudaeClaimableRollResult | MudaeKakeraRollResult
