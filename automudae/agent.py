@@ -146,6 +146,9 @@ class AutoMudaeAgent(discord.Client):
     async def roll_and_handle_my_rolls_loop(self) -> None:
         assert self.mudae_channel
         while True:
+            logger.debug(
+                "Acquiring Timer Status Lock from roll_and_handle_my_rolls_loop"
+            )
             async with self.state.timer_status.lock:
                 if self.state.timer_status.rolls_left <= 0:
                     await asyncio.sleep(1)
@@ -167,178 +170,174 @@ class AutoMudaeAgent(discord.Client):
                     await self.mudae_channel.send(self.config.mudae.roll.command)
                     self.state.timer_status.rolls_left -= 1
 
-                result = await self.wait_for_roll(
-                    {
-                        asyncio.create_task(self.state.my_claimable_roll_queue.get()),
-                        asyncio.create_task(self.state.my_kakera_roll_queue.get()),
-                    }
-                )
-                if isinstance(result, MudaeClaimableRollResult):
-                    await self.handle_claim(result)
-                elif isinstance(result, MudaeKakeraRollResult):
-                    await self.handle_kakera_react(result)
+            result = await self.wait_for_roll(
+                {
+                    asyncio.create_task(self.state.my_claimable_roll_queue.get()),
+                    asyncio.create_task(self.state.my_kakera_roll_queue.get()),
+                }
+            )
+            if isinstance(result, MudaeClaimableRollResult):
+                await self.handle_claim(result)
+            elif isinstance(result, MudaeKakeraRollResult):
+                await self.handle_kakera_react(result)
 
-                if self.state.timer_status.rolls_left <= 0:
-                    await self.send_timer_status_message()
+            if self.state.timer_status.rolls_left <= 0:
+                await self.send_timer_status_message()
 
     async def handle_others_rolls_loop(self) -> None:
         while True:
-            async with self.state.timer_status.lock:
-                result = await self.wait_for_roll(
-                    {
-                        asyncio.create_task(
-                            self.state.others_claimable_roll_queue.get()
-                        ),
-                        asyncio.create_task(self.state.others_kakera_roll_queue.get()),
-                    }
-                )
-                if isinstance(result, MudaeClaimableRollResult):
-                    await self.handle_claim(result)
-                elif isinstance(result, MudaeKakeraRollResult):
-                    await self.handle_kakera_react(result)
+            result = await self.wait_for_roll(
+                {
+                    asyncio.create_task(self.state.others_claimable_roll_queue.get()),
+                    asyncio.create_task(self.state.others_kakera_roll_queue.get()),
+                }
+            )
+            if isinstance(result, MudaeClaimableRollResult):
+                await self.handle_claim(result)
+            elif isinstance(result, MudaeKakeraRollResult):
+                await self.handle_kakera_react(result)
 
     async def handle_claim(self, roll: MudaeClaimableRollResult) -> None:
 
         assert self.user
         assert self.mudae_channel
 
-        if not self.state.timer_status:
-            logger.warning("> Not Claiming: Timer Status Not Available")
-            return
+        logger.debug("Acquiring Timer Status Lock from handle_claim")
+        async with self.state.timer_status.lock:
+            if not self.state.timer_status:
+                logger.warning("> Not Claiming: Timer Status Not Available")
+                return
 
-        if not self.state.timer_status.can_claim:
-            logger.info("> Not Claiming: Cannot Claim")
-            return
+            if not self.state.timer_status.can_claim:
+                logger.info("> Not Claiming: Cannot Claim")
+                return
 
-        if not self.state.timer_status:
-            logger.warning("> Not Claiming: Timer Status Not Available")
-            return
+            current_time = datetime.now(tz=timezone.utc)
+            roll_time_elapsed = current_time - roll.message.created_at
+            if roll_time_elapsed.total_seconds() >= 30:
+                logger.debug("> Roll older than 30 seconds")
+                return
 
-        if not self.state.timer_status.can_claim:
-            logger.info("> Not Claiming: Cannot Claim")
-            return
+            snipe_criteria = self.config.mudae.claim.snipe
+            if roll.is_qualified(snipe_criteria, self.user):
+                async with self.react_rate_limiter:
+                    time_to_claim = self.get_reaction_time(roll)
+                    logger.info("> Snipe: %s", roll.character)
+                    logger.info("> Reaction Time: %.2fs", time_to_claim)
+                    await roll.claim()
+                self.state.timer_status.can_claim = False
+                await self.send_timer_status_message()
+                return
+            logger.debug("> Failed Snipe Criteria")
 
-        current_time = datetime.now(tz=timezone.utc)
-        roll_time_elapsed = current_time - roll.message.created_at
-        if roll_time_elapsed.total_seconds() >= 30:
-            logger.debug("> Roll older than 30 seconds")
-            return
+            roll_is_mine = roll.owner.id == self.user.id
+            if not roll_is_mine:
+                logger.debug("> Roll Not Mine")
+                return
 
-        snipe_criteria = self.config.mudae.claim.snipe
-        if roll.is_qualified(snipe_criteria, self.user):
+            early_claim_criteria = self.config.mudae.claim.earlyClaim
+            if (
+                roll.is_qualified(early_claim_criteria, self.user)
+                or roll.wished_by is not None
+            ):
+                async with self.react_rate_limiter:
+                    time_to_claim = self.get_reaction_time(roll)
+                    logger.info("> Early Claim: %s", roll.character)
+                    logger.info("> Reaction Time: %.2fs", time_to_claim)
+                    await roll.claim()
+                self.state.timer_status.can_claim = False
+                await self.send_timer_status_message()
+                return
+            logger.debug("> Failed Early Claim Criteria")
+
+            if not self.state.timer_status.next_hour_is_reset:
+                logger.debug("> Next Hour is Not Reset")
+                return
+
+            if self.state.late_claim_best_pick is None:
+                logger.debug("> Overriding Late Claim Best Pick: Best Pick is None")
+                self.state.late_claim_best_pick = roll
+            elif roll.wished_by is not None:
+                logger.debug("> Overriding Late Claim Best Pick: Wished by Someone")
+                self.state.late_claim_best_pick = roll
+            elif self.state.late_claim_best_pick.kakera_value <= roll.kakera_value:
+                logger.debug(
+                    "> Overriding Late Claim Best Pick: Roll Has More Kakera Value"
+                )
+                self.state.late_claim_best_pick = roll
+
+            assert self.state.late_claim_best_pick
+            late_claim_criteria = self.config.mudae.claim.lateClaim
+            if not self.state.late_claim_best_pick.is_qualified(
+                late_claim_criteria, self.user
+            ):
+                logger.debug("> Failed Late Claim Criteria")
+                logger.debug("> Clearing Late Claim Best Pick")
+                self.state.late_claim_best_pick = None
+                return
+
+            if self.state.timer_status.rolls_left != 0:
+                logger.debug("> Rolls Not 0 Yet")
+                return
+
             async with self.react_rate_limiter:
-                time_to_claim = self.get_reaction_time(roll)
-                logger.info("> Snipe: %s", roll.character)
+                time_to_claim = self.get_reaction_time(self.state.late_claim_best_pick)
+                logger.info(
+                    "> Late Claim: %s", self.state.late_claim_best_pick.character
+                )
                 logger.info("> Reaction Time: %.2fs", time_to_claim)
-                await roll.claim()
+                await self.state.late_claim_best_pick.claim()
+
             self.state.timer_status.can_claim = False
             await self.send_timer_status_message()
-            return
-        logger.debug("> Failed Snipe Criteria")
 
-        roll_is_mine = roll.owner.id == self.user.id
-        if not roll_is_mine:
-            logger.debug("> Roll Not Mine")
-            return
-
-        early_claim_criteria = self.config.mudae.claim.earlyClaim
-        if (
-            roll.is_qualified(early_claim_criteria, self.user)
-            or roll.wished_by is not None
-        ):
-            async with self.react_rate_limiter:
-                time_to_claim = self.get_reaction_time(roll)
-                logger.info("> Early Claim: %s", roll.character)
-                logger.info("> Reaction Time: %.2fs", time_to_claim)
-                await roll.claim()
-            self.state.timer_status.can_claim = False
-            await self.send_timer_status_message()
-            return
-        logger.debug("> Failed Early Claim Criteria")
-
-        if not self.state.timer_status.next_hour_is_reset:
-            logger.debug("> Next Hour is Not Reset")
-            return
-
-        if self.state.late_claim_best_pick is None:
-            logger.debug("> Overriding Late Claim Best Pick: Best Pick is None")
-            self.state.late_claim_best_pick = roll
-        elif roll.wished_by is not None:
-            logger.debug("> Overriding Late Claim Best Pick: Wished by Someone")
-            self.state.late_claim_best_pick = roll
-        elif self.state.late_claim_best_pick.kakera_value <= roll.kakera_value:
-            logger.debug(
-                "> Overriding Late Claim Best Pick: Roll Has More Kakera Value"
-            )
-            self.state.late_claim_best_pick = roll
-
-        assert self.state.late_claim_best_pick
-        late_claim_criteria = self.config.mudae.claim.lateClaim
-        if not self.state.late_claim_best_pick.is_qualified(
-            late_claim_criteria, self.user
-        ):
-            logger.debug("> Failed Late Claim Criteria")
-            logger.debug("> Clearing Late Claim Best Pick")
             self.state.late_claim_best_pick = None
-            return
-
-        if self.state.timer_status.rolls_left != 0:
-            logger.debug("> Rolls Not 0 Yet")
-            return
-
-        async with self.react_rate_limiter:
-            time_to_claim = self.get_reaction_time(self.state.late_claim_best_pick)
-            logger.info("> Late Claim: %s", self.state.late_claim_best_pick.character)
-            logger.info("> Reaction Time: %.2fs", time_to_claim)
-            await self.state.late_claim_best_pick.claim()
-
-        self.state.timer_status.can_claim = False
-        await self.send_timer_status_message()
-
-        self.state.late_claim_best_pick = None
 
     async def handle_kakera_react(self, roll: MudaeKakeraRollResult) -> None:
 
         assert self.user
         assert self.mudae_channel
 
-        if not self.state.timer_status:
-            logger.warning("> Timer Status Unavailable")
-            return
+        logger.debug("Acquiring Timer Status Lock from handle_kakera_react")
+        async with self.state.timer_status.lock:
 
-        current_time = datetime.now(tz=timezone.utc)
-        roll_time_elapsed = current_time - roll.message.created_at
-        if roll_time_elapsed.total_seconds() >= 30:
-            logger.debug("> Roll older than 30 seconds")
-            return
-
-        roll_is_mine = roll.owner.id == self.user.id
-        if not roll_is_mine:
-            logger.debug("> Roll Not Mine")
-            return
-
-        kakera_buttons = [
-            button.emoji.name for button in roll.buttons if button.emoji is not None
-        ]
-        for button_name in kakera_buttons:
-            if button_name in self.config.mudae.kakeraReact.doNotReactToKakeraTypes:
-                logger.info("> Will not react to %s", button_name)
+            if not self.state.timer_status:
+                logger.warning("> Timer Status Unavailable")
                 return
-        if (
-            "kakeraP" not in kakera_buttons
-            and not self.state.timer_status.can_kakera_react
-        ):
-            logger.info("> Cannot react to non-purple kakera")
-            return
 
-        time_to_claim = self.get_reaction_time(roll)
-        logger.info("> Kakera React: %s", kakera_buttons)
-        logger.info("> Reaction Time: %.2fs", time_to_claim)
-        async with self.react_rate_limiter:
-            await roll.kakera_react()
-            self.state.timer_status.can_kakera_react = False
+            current_time = datetime.now(tz=timezone.utc)
+            roll_time_elapsed = current_time - roll.message.created_at
+            if roll_time_elapsed.total_seconds() >= 30:
+                logger.debug("> Roll older than 30 seconds")
+                return
 
-            await self.send_timer_status_message()
+            roll_is_mine = roll.owner.id == self.user.id
+            if not roll_is_mine:
+                logger.debug("> Roll Not Mine")
+                return
+
+            kakera_buttons = [
+                button.emoji.name for button in roll.buttons if button.emoji is not None
+            ]
+            for button_name in kakera_buttons:
+                if button_name in self.config.mudae.kakeraReact.doNotReactToKakeraTypes:
+                    logger.info("> Will not react to %s", button_name)
+                    return
+            if (
+                "kakeraP" not in kakera_buttons
+                and not self.state.timer_status.can_kakera_react
+            ):
+                logger.info("> Cannot react to non-purple kakera")
+                return
+
+            time_to_claim = self.get_reaction_time(roll)
+            logger.info("> Kakera React: %s", kakera_buttons)
+            logger.info("> Reaction Time: %.2fs", time_to_claim)
+            async with self.react_rate_limiter:
+                await roll.kakera_react()
+                self.state.timer_status.can_kakera_react = False
+
+                await self.send_timer_status_message()
 
     async def wait_for_roll(
         self,
