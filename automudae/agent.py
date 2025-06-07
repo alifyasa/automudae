@@ -39,7 +39,6 @@ class AutoMudaeAgentState:
         self.others_kakera_roll_queue: asyncio.Queue[MudaeKakeraRollResult] = (
             asyncio.Queue()
         )
-        self.lock: asyncio.Lock = asyncio.Lock()
 
 
 class AutoMudaeAgent(discord.Client):
@@ -140,8 +139,7 @@ class AutoMudaeAgent(discord.Client):
             return
 
     async def send_timer_status_message(self) -> None:
-        if not self.mudae_channel:
-            return
+        assert self.mudae_channel
         async with self.command_rate_limiter:
             await self.mudae_channel.send("$tu")
 
@@ -169,8 +167,6 @@ class AutoMudaeAgent(discord.Client):
                 if self.state.timer_status.rolls_left <= 0:
                     await self.send_timer_status_message()
 
-                await asyncio.sleep(1.5)
-
     async def handle_others_rolls_loop(self) -> None:
         while True:
             result = await self.wait_for_roll(
@@ -183,16 +179,18 @@ class AutoMudaeAgent(discord.Client):
                 await self.handle_claim(result)
             elif isinstance(result, MudaeKakeraRollResult):
                 await self.handle_kakera_react(result)
-            await asyncio.sleep(1.5)
 
     async def handle_claim(self, roll: MudaeClaimableRollResult) -> None:
 
-        if not self.user:
-            logger.warning("> Not Claiming: Not Logged In")
+        assert self.user
+        assert self.mudae_channel
+
+        if not self.state.timer_status:
+            logger.warning("> Not Claiming: Timer Status Not Available")
             return
 
-        if not self.mudae_channel:
-            logger.warning("> Not Claiming: Mudae Channel Unavailable")
+        if not self.state.timer_status.can_claim:
+            logger.info("> Not Claiming: Cannot Claim")
             return
 
         if not self.state.timer_status:
@@ -216,9 +214,8 @@ class AutoMudaeAgent(discord.Client):
                 logger.info("> Snipe: %s", roll.character)
                 logger.info("> Reaction Time: %.2fs", time_to_claim)
                 await roll.claim()
-                self.state.timer_status.can_claim = False
-            async with self.command_rate_limiter:
-                await self.mudae_channel.send("$tu")
+            self.state.timer_status.can_claim = False
+            await self.send_timer_status_message()
             return
         logger.debug("> Failed Snipe Criteria")
 
@@ -237,9 +234,8 @@ class AutoMudaeAgent(discord.Client):
                 logger.info("> Early Claim: %s", roll.character)
                 logger.info("> Reaction Time: %.2fs", time_to_claim)
                 await roll.claim()
-                self.state.timer_status.can_claim = False
-            async with self.command_rate_limiter:
-                await self.mudae_channel.send("$tu")
+            self.state.timer_status.can_claim = False
+            await self.send_timer_status_message()
             return
         logger.debug("> Failed Early Claim Criteria")
 
@@ -278,26 +274,18 @@ class AutoMudaeAgent(discord.Client):
             logger.info("> Late Claim: %s", self.state.late_claim_best_pick.character)
             logger.info("> Reaction Time: %.2fs", time_to_claim)
             await self.state.late_claim_best_pick.claim()
-            self.state.timer_status.can_claim = False
 
-        async with self.command_rate_limiter:
-            await self.mudae_channel.send("$tu")
+        self.state.timer_status.can_claim = False
+        await self.send_timer_status_message()
 
         self.state.late_claim_best_pick = None
 
     async def handle_kakera_react(self, roll: MudaeKakeraRollResult) -> None:
 
-        if not self.user:
-            logger.warning("> Not Logged In")
-            return
-
-        if not self.mudae_channel:
-            logger.warning("> Mudae Channel Unavailable")
-            return
+        assert self.user
+        assert self.mudae_channel
 
         async with self.state.timer_status.lock:
-
-            self.state.timer_status.rolls_left -= 1
 
             if not self.state.timer_status:
                 logger.warning("> Timer Status Unavailable")
@@ -335,8 +323,7 @@ class AutoMudaeAgent(discord.Client):
                 await roll.kakera_react()
                 self.state.timer_status.can_kakera_react = False
 
-            async with self.command_rate_limiter:
-                await self.mudae_channel.send("$tu")
+            await self.send_timer_status_message()
 
     async def wait_for_roll(
         self,
