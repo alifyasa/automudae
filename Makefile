@@ -7,7 +7,6 @@ down:
 	docker compose down
 
 format:
-	echo "Running format..."
 	find automudae/ -name '*.py' -exec autoflake {} \
 	    --in-place \
 	    --remove-all-unused-imports \
@@ -19,12 +18,10 @@ format:
 	black automudae/
 
 lint: format
-	echo "Running lint..."
 	mypy automudae/
 	pylint automudae/
 
 check: lint
-	echo "Running check..."
 	pyflakes automudae/
 
 all: format lint check
