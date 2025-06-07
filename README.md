@@ -1,14 +1,16 @@
 # AutoMudae
 
-Automatically:
-1. Roll
-2. Claim
-3. Kakera React
+Plays Mudae for You. Automatically:
+1. Rolls
+2. Claims
+3. Kakera Reacts
 
-## Configuration
+## How to Use
 
-See [`config/schema.yaml`](config/schema.yaml).
+1. Configure in `config/config.yaml`. See [`config/example.config.yaml`](config/example.config.yaml)
+2. Configure Docker in `docker-compose.yaml`. See [`example.docker-compose.yaml`](example.docker-compose.yaml)
+3. `make up`
 
 ## Example
 
-See [`config/example.config.yaml`](config/example.config.yaml).
+See [`config/example.config.yaml`](config/example.config.yaml) and [`example.docker-compose.yaml`](example.docker-compose.yaml).
