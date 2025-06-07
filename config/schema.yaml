@@ -63,20 +63,52 @@ $defs:
     - mudaeBotId
     title: DiscordConfig
     type: object
+  KakeraReactConfig:
+    properties:
+      doNotReactToKakeraTypes:
+        items:
+          type: string
+        title: Donotreacttokakeratypes
+        type: array
+    title: KakeraReactConfig
+    type: object
   MudaeConfig:
     properties:
       claim:
         $ref: '#/$defs/ClaimConfig'
+        default:
+          earlyClaim:
+            character: []
+            minKakera: 10000
+            series: []
+            wish: false
+          lateClaim:
+            character: []
+            minKakera: 10000
+            series: []
+            wish: false
+          snipe:
+            character: []
+            minKakera: 10000
+            series: []
+            wish: false
+      kakeraReact:
+        $ref: '#/$defs/KakeraReactConfig'
+        default:
+          doNotReactToKakeraTypes: []
       roll:
         $ref: '#/$defs/RollConfig'
-    required:
-    - roll
-    - claim
+        default:
+          command: $w
+          doNotRollWhenCannotKakeraReact: false
+          doNotRollWhenCanotClaim: true
+          rollResetMinuteOffset: 0
     title: MudaeConfig
     type: object
   RollConfig:
     properties:
       command:
+        default: $w
         enum:
         - $wg
         - $wa
@@ -91,10 +123,13 @@ $defs:
         default: true
         title: Donotrollwhencanotclaim
         type: boolean
-    required:
-    - command
+      rollResetMinuteOffset:
+        default: 0
+        title: Rollresetminuteoffset
+        type: integer
     title: RollConfig
     type: object
+additionalProperties: false
 properties:
   discord:
     $ref: '#/$defs/DiscordConfig'
