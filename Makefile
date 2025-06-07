@@ -1,4 +1,10 @@
-.PHONY: format lint check all
+.PHONY: format lint check all up down
+
+up:
+	docker compose up --build --force-recreate --detach --remove-orphans
+
+down:
+	docker compose down
 
 format:
 	echo "Running format..."
