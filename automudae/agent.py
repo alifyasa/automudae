@@ -75,35 +75,40 @@ class AutoMudaeAgent(discord.Client):
         if message.channel.id != self.config.discord.channelId:
             return
 
-        roll_command = MudaeRollCommand.create(message)
-        if roll_command is not None:
+        if (roll_command := MudaeRollCommand.create(message)) is not None:
             await self.mudae_roll_commands.put(roll_command)
             logger.debug(roll_command)
             return
 
-        claimable_roll = await MudaeClaimableRoll.create(
-            message, self.mudae_roll_commands
-        )
-        if claimable_roll is not None:
+        if (
+            claimable_roll := await MudaeClaimableRoll.create(
+                message, self.mudae_roll_commands
+            )
+        ) is not None:
             logger.info(claimable_roll)
             await self.handle_claim(claimable_roll)
             return
 
-        kakera_roll = await MudaeKakeraRoll.create(message, self.mudae_roll_commands)
-        if kakera_roll is not None:
+        if (
+            kakera_roll := await MudaeKakeraRoll.create(
+                message, self.mudae_roll_commands
+            )
+        ) is not None:
             logger.info(kakera_roll)
             await self.handle_kakera_react(kakera_roll)
             return
 
-        failed_roll_command = await MudaeFailedRollCommand.create(
-            message, self.mudae_roll_commands
-        )
-        if failed_roll_command is not None:
+        if (
+            failed_roll_command := await MudaeFailedRollCommand.create(
+                message, self.mudae_roll_commands
+            )
+        ) is not None:
             logger.debug(failed_roll_command)
             return
 
-        timer_status = await MudaeTimerStatus.create(message, self.user)
-        if timer_status is not None:
+        if (
+            timer_status := await MudaeTimerStatus.create(message, self.user)
+        ) is not None:
             await self.timer_status.update(timer_status)
             logger.info(self.timer_status)
             return
