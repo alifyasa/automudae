@@ -150,9 +150,23 @@ class AutoMudaeAgent(discord.Client):
                 if self.state.timer_status.rolls_left <= 0:
                     await asyncio.sleep(1)
                     continue
+                if (
+                    self.config.mudae.roll.doNotRollWhenCanotClaim
+                    and not self.state.timer_status.can_claim
+                ):
+                    await asyncio.sleep(1)
+                    continue
+                if (
+                    self.config.mudae.roll.doNotRollWhenCannotKakeraReact
+                    and not self.state.timer_status.can_kakera_react
+                ):
+                    await asyncio.sleep(1)
+                    continue
+
                 async with self.command_rate_limiter:
                     await self.mudae_channel.send(self.config.mudae.roll.command)
                     self.state.timer_status.rolls_left -= 1
+
                 result = await self.wait_for_roll(
                     {
                         asyncio.create_task(self.state.my_claimable_roll_queue.get()),
