@@ -7,6 +7,8 @@ from typing import Self
 import discord
 from pydantic import BaseModel, Field
 
+from automudae.mudae.helper import LockDebugger
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -38,6 +40,9 @@ class MudaeTimerStatus(BaseModel):
 
     def __str__(self) -> str:
         return self.__repr__()
+
+    def debug_lock(self, name: str) -> LockDebugger:
+        return LockDebugger(self.lock, name)
 
     @classmethod
     async def create(cls, message: discord.Message, current_user: MudaeTimerOwner):
@@ -83,7 +88,7 @@ class MudaeTimerStatus(BaseModel):
         )
 
     async def update(self, new_timer_status: Self) -> None:
-        async with self.lock:
+        async with self.debug_lock("update"):
             self.can_claim = new_timer_status.can_claim
             self.rolls_left = new_timer_status.rolls_left
             self.can_kakera_react = new_timer_status.can_kakera_react

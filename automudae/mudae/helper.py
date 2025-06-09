@@ -1,4 +1,9 @@
+import asyncio
 import discord
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 def get_buttons(message: discord.Message):
@@ -13,3 +18,17 @@ def get_buttons(message: discord.Message):
                 continue
             buttons.append(child)
     return buttons
+
+
+class LockDebugger:
+    def __init__(self, lock: asyncio.Lock, name: str) -> None:
+        self.lock = lock
+        self.name = name
+
+    async def __aenter__(self) -> None:
+        await self.lock.acquire()
+        logger.debug("Obtained Lock (%s)", self.name)
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.lock.release()
+        logger.debug("Released Lock (%s)", self.name)

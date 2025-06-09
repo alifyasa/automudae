@@ -146,36 +146,35 @@ class AutoMudaeAgent(discord.Client):
     async def roll_and_handle_my_rolls_loop(self) -> None:
         assert self.mudae_channel
         while True:
-            async with self.state.timer_status.lock:
+            await asyncio.sleep(1)
+            async with self.state.timer_status.debug_lock(
+                "roll_and_handle_my_rolls_loop"
+            ):
                 if self.state.timer_status.rolls_left <= 0:
-                    await asyncio.sleep(1)
                     continue
                 if (
                     self.config.mudae.roll.doNotRollWhenCanotClaim
                     and not self.state.timer_status.can_claim
                 ):
-                    await asyncio.sleep(1)
                     continue
                 if (
                     self.config.mudae.roll.doNotRollWhenCannotKakeraReact
                     and not self.state.timer_status.can_kakera_react
                 ):
-                    await asyncio.sleep(1)
                     continue
 
                 async with self.command_rate_limiter:
                     await self.mudae_channel.send(self.config.mudae.roll.command)
                     self.state.timer_status.rolls_left -= 1
 
-                get_roll_result_task = self.wait_for_roll(
-                    {
-                        asyncio.create_task(self.state.my_claimable_roll_queue.get()),
-                        asyncio.create_task(self.state.my_kakera_roll_queue.get()),
-                    }
-                )
                 try:
-                    roll_result = await asyncio.wait_for(
-                        get_roll_result_task, timeout=3
+                    roll_result = await self.wait_for_roll(
+                        {
+                            asyncio.create_task(
+                                self.state.my_claimable_roll_queue.get()
+                            ),
+                            asyncio.create_task(self.state.my_kakera_roll_queue.get()),
+                        }
                     )
 
                     if isinstance(roll_result, MudaeClaimableRollResult):
@@ -199,7 +198,7 @@ class AutoMudaeAgent(discord.Client):
                     asyncio.create_task(self.state.others_kakera_roll_queue.get()),
                 }
             )
-            async with self.state.timer_status.lock:
+            async with self.state.timer_status.debug_lock("handle_others_rolls_loop"):
                 if isinstance(result, MudaeClaimableRollResult):
                     await self.handle_claim(result)
                 elif isinstance(result, MudaeKakeraRollResult):
@@ -209,8 +208,6 @@ class AutoMudaeAgent(discord.Client):
 
         assert self.user
         assert self.mudae_channel
-
-        logger.debug("Acquiring Timer Status Lock from handle_claim")
 
         if not self.state.timer_status:
             logger.warning("> Not Claiming: Timer Status Not Available")
@@ -304,8 +301,6 @@ class AutoMudaeAgent(discord.Client):
         assert self.user
         assert self.mudae_channel
 
-        logger.debug("Acquiring Timer Status Lock from handle_kakera_react")
-
         if not self.state.timer_status:
             logger.warning("> Timer Status Unavailable")
             return
@@ -349,10 +344,12 @@ class AutoMudaeAgent(discord.Client):
         from_queue: set[
             asyncio.Task[MudaeClaimableRollResult] | asyncio.Task[MudaeKakeraRollResult]
         ],
+        timeout: int = 10,
     ) -> MudaeClaimableRollResult | MudaeKakeraRollResult:
         done, pending = await asyncio.wait(
             from_queue,
             return_when=asyncio.FIRST_COMPLETED,
+            timeout=timeout,
         )
         for task in pending:
             task.cancel()
