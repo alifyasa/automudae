@@ -33,9 +33,6 @@ class MudaeRollCommand(MudaeRoll):
 
     command: MudaeRollCommandType
 
-    class Config:
-        arbitrary_types_allowed = True
-
     def __repr__(self) -> str:
 
         return (
@@ -110,9 +107,6 @@ class MudaeClaimableRollResult(MudaeRoll):
     series: str
     kakera_value: int
     wished_by: MudaeRollOwner | None = None
-
-    class Config:
-        arbitrary_types_allowed = True
 
     def __repr__(self) -> str:
         wished_by = self.wished_by.name if self.wished_by else None
@@ -223,9 +217,6 @@ class MudaeClaimableRollResult(MudaeRoll):
 class MudaeKakeraRollResult(MudaeRoll):
 
     buttons: list[discord.Button]
-
-    class Config:
-        arbitrary_types_allowed = True
 
     def __repr__(self) -> str:
         return (
