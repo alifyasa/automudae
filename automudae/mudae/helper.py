@@ -4,7 +4,7 @@ import logging
 import discord
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 def get_buttons(message: discord.Message):

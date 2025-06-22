@@ -214,15 +214,30 @@ class MudaeClaimableRollResult(MudaeRoll):
         )
 
 
+KAKERA_TYPES = {
+    "kakeraP": 100,
+    "kakera": 101,
+    "kakeraT": 171,
+    "kakeraG": 251,
+    "kakeraY": 401,
+    "kakeraO": 701,
+    "kakeraR": 1401,
+    "kakeraW": 3001,
+    "kakeraL": 1000,
+}
+
+
 class MudaeKakeraRollResult(MudaeRoll):
 
     buttons: list[discord.Button]
+    kakera_value: int
 
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}("
             f"owner={self.owner.name!r}, "
-            f"buttons={[button.emoji.name for button in self.buttons if button.emoji]})"
+            f"buttons={[button.emoji.name for button in self.buttons if button.emoji]}, "
+            f"kakera_value={self.kakera_value})"
         )
 
     def __str__(self) -> str:
@@ -242,7 +257,7 @@ class MudaeKakeraRollResult(MudaeRoll):
         buttons = [
             button
             for button in get_buttons(message)
-            if button.emoji and "kakera" in button.emoji.name
+            if button.emoji and button.emoji.name in KAKERA_TYPES
         ]
         if len(buttons) == 0:
             return None
@@ -256,7 +271,12 @@ class MudaeKakeraRollResult(MudaeRoll):
             )
             owner = roll_command.owner
 
-        return MudaeKakeraRollResult(owner=owner, message=message, buttons=buttons)
+        return MudaeKakeraRollResult(
+            owner=owner,
+            message=message,
+            buttons=buttons,
+            kakera_value=sum(KAKERA_TYPES[button.emoji.name] for button in buttons),
+        )
 
 
 MudaeRollResult = MudaeClaimableRollResult | MudaeKakeraRollResult

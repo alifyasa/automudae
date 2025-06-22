@@ -49,8 +49,7 @@ class MudaeTimerStatus(BaseModel):
         clean_msg = discord.utils.remove_markdown(message.content)
 
         is_my_message = clean_msg.startswith(current_user.name)
-        is_mudae_timer_list_msg = "=> $tuarrange" in clean_msg
-        if not (is_mudae_timer_list_msg and is_my_message):
+        if not is_my_message:
             return None
 
         claim_pattern = re.search(r"you (can|can\'t) claim", clean_msg)

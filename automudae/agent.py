@@ -18,12 +18,13 @@ from automudae.mudae.roll import (
 from automudae.mudae.timer import MudaeTimerStatus
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 class AutoMudaeAgentState:
     def __init__(self) -> None:
         self.late_claim_best_pick: MudaeClaimableRollResult | None = None
+        self.kakera_best_pick: MudaeKakeraRollResult | None = None
         self.timer_status = MudaeTimerStatus()
 
         self.roll_command_queue: asyncio.Queue[MudaeRollCommand] = asyncio.Queue()
@@ -184,6 +185,7 @@ class AutoMudaeAgent(discord.Client):
                     await self.handle_claim(result)
                 else:
                     await self.handle_kakera_react(result)
+                await self.handle_finalizer()
 
     async def handle_others_rolls_loop(self) -> None:
         while True:
@@ -198,6 +200,7 @@ class AutoMudaeAgent(discord.Client):
                     await self.handle_claim(result)
                 else:
                     await self.handle_kakera_react(result)
+                await self.handle_finalizer()
 
     async def handle_claim(self, roll: MudaeClaimableRollResult) -> None:
 
@@ -229,7 +232,6 @@ class AutoMudaeAgent(discord.Client):
                 logger.info("> Reaction Time: %.2fs", time_to_claim)
                 await roll.claim()
             self.state.timer_status.can_claim = False
-            await self.send_timer_status_message()
             return
         logger.debug("> Failed Snipe Criteria")
 
@@ -249,7 +251,6 @@ class AutoMudaeAgent(discord.Client):
                 logger.info("> Reaction Time: %.2fs", time_to_claim)
                 await roll.claim()
             self.state.timer_status.can_claim = False
-            await self.send_timer_status_message()
             return
         logger.debug("> Failed Early Claim Criteria")
 
@@ -290,7 +291,6 @@ class AutoMudaeAgent(discord.Client):
             await self.state.late_claim_best_pick.claim()
 
         self.state.timer_status.can_claim = False
-        await self.send_timer_status_message()
 
         self.state.late_claim_best_pick = None
 
@@ -317,6 +317,15 @@ class AutoMudaeAgent(discord.Client):
             logger.debug("> Roll Not Mine")
             return
 
+        if self.state.kakera_best_pick is None:
+            self.state.kakera_best_pick = roll
+        elif self.state.kakera_best_pick.kakera_value <= roll.kakera_value:
+            self.state.kakera_best_pick = roll
+
+        if self.state.timer_status.rolls_left != 0:
+            logger.debug("> Rolls Not 0 Yet")
+            return
+
         kakera_buttons = [
             button.emoji.name for button in roll.buttons if button.emoji is not None
         ]
@@ -338,7 +347,20 @@ class AutoMudaeAgent(discord.Client):
             await roll.kakera_react()
             self.state.timer_status.can_kakera_react = False
 
-            await self.send_timer_status_message()
+    async def handle_finalizer(self) -> None:
+        if self.state.timer_status.rolls_left != 0:
+            logger.debug("> Rolls Not 0 Yet")
+            return
+
+        if self.state.late_claim_best_pick is not None:
+            await self.handle_claim(self.state.late_claim_best_pick)
+            self.state.late_claim_best_pick = None
+            return
+
+        if self.state.kakera_best_pick is not None:
+            await self.handle_kakera_react(self.state.kakera_best_pick)
+            self.state.kakera_best_pick = None
+            return
 
     async def wait_for_roll(
         self,
