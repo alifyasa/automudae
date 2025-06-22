@@ -233,10 +233,11 @@ class MudaeKakeraRollResult(MudaeRoll):
     kakera_value: int
 
     def __repr__(self) -> str:
+        button_names = [button.emoji.name for button in self.buttons if button.emoji]
         return (
             f"{self.__class__.__name__}("
             f"owner={self.owner.name!r}, "
-            f"buttons={[button.emoji.name for button in self.buttons if button.emoji]}, "
+            f"buttons={button_names}, "
             f"kakera_value={self.kakera_value})"
         )
 

@@ -28,18 +28,9 @@ class AutoMudaeAgentState:
         self.timer_status = MudaeTimerStatus()
 
         self.roll_command_queue: asyncio.Queue[MudaeRollCommand] = asyncio.Queue()
-        self.my_claimable_roll_queue: asyncio.Queue[MudaeClaimableRollResult] = (
-            asyncio.Queue()
-        )
-        self.my_kakera_roll_queue: asyncio.Queue[MudaeKakeraRollResult] = (
-            asyncio.Queue()
-        )
-        self.others_claimable_roll_queue: asyncio.Queue[MudaeClaimableRollResult] = (
-            asyncio.Queue()
-        )
-        self.others_kakera_roll_queue: asyncio.Queue[MudaeKakeraRollResult] = (
-            asyncio.Queue()
-        )
+        self.roll_queue: asyncio.Queue[
+            MudaeClaimableRollResult | MudaeKakeraRollResult
+        ] = asyncio.Queue()
 
 
 class AutoMudaeAgent(discord.Client):
@@ -80,8 +71,7 @@ class AutoMudaeAgent(discord.Client):
         self.tasks = [
             hourly_roll_loop(self.send_timer_status_message).start(),
             asyncio.create_task(self.roll_loop()),
-            asyncio.create_task(self.handle_my_rolls_loop()),
-            asyncio.create_task(self.handle_others_rolls_loop()),
+            asyncio.create_task(self.handle_rolls_loop()),
         ]
 
         await self.send_timer_status_message()
@@ -106,10 +96,7 @@ class AutoMudaeAgent(discord.Client):
                 message, self.state.roll_command_queue
             )
         ) is not None:
-            if claimable_roll.owner.id == self.user.id:
-                await self.state.my_claimable_roll_queue.put(claimable_roll)
-            else:
-                await self.state.others_claimable_roll_queue.put(claimable_roll)
+            await self.state.roll_queue.put(claimable_roll)
             return
 
         if (
@@ -117,10 +104,7 @@ class AutoMudaeAgent(discord.Client):
                 message, self.state.roll_command_queue
             )
         ) is not None:
-            if kakera_roll.owner.id == self.user.id:
-                await self.state.my_kakera_roll_queue.put(kakera_roll)
-            else:
-                await self.state.others_kakera_roll_queue.put(kakera_roll)
+            await self.state.roll_queue.put(kakera_roll)
             return
 
         if (
@@ -172,30 +156,10 @@ class AutoMudaeAgent(discord.Client):
                 if self.state.timer_status.rolls_left <= 0:
                     await self.send_timer_status_message()
 
-    async def handle_my_rolls_loop(self) -> None:
+    async def handle_rolls_loop(self) -> None:
         while True:
-            result = await self.wait_for_roll(
-                {
-                    asyncio.create_task(self.state.my_claimable_roll_queue.get()),
-                    asyncio.create_task(self.state.my_kakera_roll_queue.get()),
-                }
-            )
-            async with self.state.timer_status.debug_lock("handle_my_rolls_loop"):
-                if isinstance(result, MudaeClaimableRollResult):
-                    await self.handle_claim(result)
-                else:
-                    await self.handle_kakera_react(result)
-                await self.handle_finalizer()
-
-    async def handle_others_rolls_loop(self) -> None:
-        while True:
-            result = await self.wait_for_roll(
-                {
-                    asyncio.create_task(self.state.others_claimable_roll_queue.get()),
-                    asyncio.create_task(self.state.others_kakera_roll_queue.get()),
-                }
-            )
-            async with self.state.timer_status.debug_lock("handle_others_rolls_loop"):
+            result = await self.state.roll_queue.get()
+            async with self.state.timer_status.debug_lock("handle_rolls_loop"):
                 if isinstance(result, MudaeClaimableRollResult):
                     await self.handle_claim(result)
                 else:
@@ -361,20 +325,6 @@ class AutoMudaeAgent(discord.Client):
             await self.handle_kakera_react(self.state.kakera_best_pick)
             self.state.kakera_best_pick = None
             return
-
-    async def wait_for_roll(
-        self,
-        from_queue: set[
-            asyncio.Task[MudaeClaimableRollResult] | asyncio.Task[MudaeKakeraRollResult]
-        ],
-    ) -> MudaeClaimableRollResult | MudaeKakeraRollResult:
-        done, pending = await asyncio.wait(
-            from_queue,
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        for task in pending:
-            task.cancel()
-        return await next(iter(done))
 
     def get_reaction_time(self, roll: MudaeRollResult) -> float:
         return (datetime.now(tz=timezone.utc) - roll.message.created_at).total_seconds()
