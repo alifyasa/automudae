@@ -23,7 +23,7 @@ logger.setLevel(logging.INFO)
 
 class AutoMudaeAgentState:
     def __init__(self) -> None:
-        self.late_claim_best_pick: MudaeClaimableRollResult | None = None
+        self.best_claim_roll: MudaeClaimableRollResult | None = None
         self.kakera_best_pick: MudaeKakeraRollResult | None = None
         self.timer_status = MudaeTimerStatus()
 
@@ -185,15 +185,12 @@ class AutoMudaeAgent(discord.Client):
         current_time = datetime.now(tz=timezone.utc)
         roll_time_elapsed = current_time - roll.message.created_at
         if roll_time_elapsed.total_seconds() >= 30:
-            logger.debug("> Roll older than 30 seconds")
+            logger.info("> Roll older than 30 seconds")
             return
 
         snipe_criteria = self.config.mudae.claim.snipe
         if roll.is_qualified(snipe_criteria, self.user):
             async with self.react_rate_limiter:
-                time_to_claim = self.get_reaction_time(roll)
-                logger.info("> Snipe: %s", roll.character)
-                logger.info("> Reaction Time: %.2fs", time_to_claim)
                 await roll.claim()
             self.state.timer_status.can_claim = False
             return
@@ -204,59 +201,40 @@ class AutoMudaeAgent(discord.Client):
             logger.debug("> Roll Not Mine")
             return
 
-        early_claim_criteria = self.config.mudae.claim.earlyClaim
-        if (
-            roll.is_qualified(early_claim_criteria, self.user)
-            or roll.wished_by is not None
-        ):
-            async with self.react_rate_limiter:
-                time_to_claim = self.get_reaction_time(roll)
-                logger.info("> Early Claim: %s", roll.character)
-                logger.info("> Reaction Time: %.2fs", time_to_claim)
-                await roll.claim()
-            self.state.timer_status.can_claim = False
-            return
-        logger.debug("> Failed Early Claim Criteria")
-
-        if not self.state.timer_status.next_hour_is_reset:
-            logger.debug("> Next Hour is Not Reset")
-            return
-
-        if self.state.late_claim_best_pick is None:
-            logger.debug("> Overriding Late Claim Best Pick: Best Pick is None")
-            self.state.late_claim_best_pick = roll
+        if self.state.best_claim_roll is None:
+            logger.info("> Overriding Best Claim Roll: Best Pick is None")
+            self.state.best_claim_roll = roll
         elif roll.wished_by is not None:
-            logger.debug("> Overriding Late Claim Best Pick: Wished by Someone")
-            self.state.late_claim_best_pick = roll
-        elif self.state.late_claim_best_pick.kakera_value <= roll.kakera_value:
-            logger.debug(
-                "> Overriding Late Claim Best Pick: Roll Has More Kakera Value"
-            )
-            self.state.late_claim_best_pick = roll
-
-        assert self.state.late_claim_best_pick
-        late_claim_criteria = self.config.mudae.claim.lateClaim
-        if not self.state.late_claim_best_pick.is_qualified(
-            late_claim_criteria, self.user
+            logger.info("> Overriding Best Claim Roll: Wished by Someone")
+            self.state.best_claim_roll = roll
+        elif (
+            self.state.best_claim_roll.kakera_value <= roll.kakera_value
+            and self.state.best_claim_roll.wished_by is None
         ):
-            logger.debug("> Failed Late Claim Criteria")
-            logger.debug("> Clearing Late Claim Best Pick")
-            self.state.late_claim_best_pick = None
-            return
+            logger.info("> Overriding Best Claim Roll: Roll Has More Kakera Value")
+            self.state.best_claim_roll = roll
+
+        assert self.state.best_claim_roll
 
         if self.state.timer_status.rolls_left != 0:
             logger.debug("> Rolls Not 0 Yet")
             return
 
-        async with self.react_rate_limiter:
-            time_to_claim = self.get_reaction_time(self.state.late_claim_best_pick)
-            logger.info("> Late Claim: %s", self.state.late_claim_best_pick.character)
-            logger.info("> Reaction Time: %.2fs", time_to_claim)
-            await self.state.late_claim_best_pick.claim()
+        qualified_early_claim = self.state.best_claim_roll.is_qualified(
+            self.config.mudae.claim.earlyClaim, self.user
+        )
+        qualified_late_claim = self.state.best_claim_roll.is_qualified(
+            self.config.mudae.claim.lateClaim, self.user
+        )
 
-        self.state.timer_status.can_claim = False
+        if qualified_early_claim or (
+            qualified_late_claim and self.state.timer_status.next_hour_is_reset
+        ):
+            async with self.react_rate_limiter:
+                await self.state.best_claim_roll.claim()
+            self.state.timer_status.can_claim = False
 
-        self.state.late_claim_best_pick = None
+        self.state.best_claim_roll = None
 
     async def handle_kakera_react(self, roll: MudaeKakeraRollResult) -> None:
 
@@ -316,9 +294,9 @@ class AutoMudaeAgent(discord.Client):
             logger.debug("> Rolls Not 0 Yet")
             return
 
-        if self.state.late_claim_best_pick is not None:
-            await self.handle_claim(self.state.late_claim_best_pick)
-            self.state.late_claim_best_pick = None
+        if self.state.best_claim_roll is not None:
+            await self.handle_claim(self.state.best_claim_roll)
+            self.state.best_claim_roll = None
             return
 
         if self.state.kakera_best_pick is not None:
