@@ -174,3 +174,4 @@ cython_debug/
 .pypirc
 
 docker-compose.yaml
+vote.sh
