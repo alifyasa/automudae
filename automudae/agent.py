@@ -8,6 +8,7 @@ from aiolimiter import AsyncLimiter
 from discord.ext import tasks
 
 from automudae.config import Config
+from automudae.helper import discord_message_to_str
 from automudae.mudae.roll import (
     MudaeClaimableRollResult,
     MudaeKakeraRollResult,
@@ -86,6 +87,8 @@ class AutoMudaeAgent(discord.Client):
 
         if message.channel.id != self.config.discord.channelId:
             return
+
+        logger.info(discord_message_to_str(message))
 
         if (roll_command := MudaeRollCommand.create(message)) is not None:
             await self.state.roll_command_queue.put(roll_command)
@@ -172,53 +175,83 @@ class AutoMudaeAgent(discord.Client):
         logger.info(roll)
 
         if not self.user:
-            logger.error("> Not Logged In")
+            logger.error("CLAIM FAILED: Not logged in - cannot identify user")
             return
 
         if not self.mudae_channel:
-            logger.error("> Mudae Channel Not Set")
+            logger.error("CLAIM FAILED: Mudae channel not configured")
             return
 
         if not self.state.timer_status.can_claim:
-            logger.info("> Cannot Claim")
+            logger.info("CLAIM SKIPPED: Timer cooldown active - cannot claim yet")
             return
 
         current_time = datetime.now(tz=timezone.utc)
         roll_time_elapsed = current_time - roll.message.created_at
         if roll_time_elapsed.total_seconds() >= 30:
-            logger.info("> Roll older than 30 seconds")
+            logger.info(
+                "CLAIM SKIPPED: Roll too old (%.1fs > 30s timeout)",
+                roll_time_elapsed.total_seconds(),
+            )
             return
 
         snipe_criteria = self.config.mudae.claim.snipe
         if roll.is_qualified(snipe_criteria, self.user):
+            logger.info("CLAIMING: Roll meets snipe criteria - immediate claim")
             async with self.react_rate_limiter:
                 await roll.claim()
             self.state.timer_status.can_claim = False
             return
-        logger.debug("> Failed Snipe Criteria")
+        logger.info("SNIPE REJECTED: Roll doesn't meet snipe criteria")
 
         roll_is_mine = roll.owner.id == self.user.id
         if not roll_is_mine:
-            logger.debug("> Roll Not Mine")
+            logger.info(
+                "PROCESSING SKIPPED: Roll belongs to user %s, not me (%s)",
+                roll.owner.id,
+                self.user.id,
+            )
             return
 
+        logger.info("PROCESSING: Roll is mine, evaluating for best claim selection")
+
         if self.state.best_claim_roll is None:
-            logger.info("> Overriding Best Claim Roll: Best Pick is None")
+            logger.info(
+                "BEST ROLL UPDATED: No previous best roll - setting this as best"
+            )
             self.state.best_claim_roll = roll
         elif roll.wished_by is not None:
-            logger.info("> Overriding Best Claim Roll: Wished by Someone")
+            logger.info(
+                "BEST ROLL UPDATED: Roll is wished by %s - prioritizing over previous best",
+                roll.wished_by,
+            )
             self.state.best_claim_roll = roll
         elif (
             self.state.best_claim_roll.kakera_value <= roll.kakera_value
             and self.state.best_claim_roll.wished_by is None
         ):
-            logger.info("> Overriding Best Claim Roll: Roll Has More Kakera Value")
+            logger.info(
+                "BEST ROLL UPDATED: Higher kakera value (%s >= %s) and no wishes on previous best",
+                roll.kakera_value,
+                self.state.best_claim_roll.kakera_value,
+            )
             self.state.best_claim_roll = roll
+        else:
+            logger.info(
+                "BEST ROLL UNCHANGED: Current roll (kakera: %s, wished: %s) doesn't beat existing best (kakera: %s, wished: %s)",
+                roll.kakera_value,
+                roll.wished_by is not None,
+                self.state.best_claim_roll.kakera_value,
+                self.state.best_claim_roll.wished_by is not None,
+            )
 
         assert self.state.best_claim_roll
 
         if self.state.timer_status.rolls_left != 0:
-            logger.debug("> Rolls Not 0 Yet")
+            logger.info(
+                "CLAIM DEFERRED: Waiting for %s more rolls before claiming best",
+                self.state.timer_status.rolls_left,
+            )
             return
 
         qualified_early_claim = self.state.best_claim_roll.is_qualified(
@@ -227,14 +260,35 @@ class AutoMudaeAgent(discord.Client):
         qualified_late_claim = self.state.best_claim_roll.is_qualified(
             self.config.mudae.claim.lateClaim, self.user
         )
-
+        logger.info(
+            "CLAIM EVALUATION: Early qualified: %s, Late qualified: %s, Next hour is reset: %s",
+            qualified_early_claim,
+            qualified_late_claim,
+            self.state.timer_status.next_hour_is_reset,
+        )
         if qualified_early_claim or (
             qualified_late_claim and self.state.timer_status.next_hour_is_reset
         ):
+            if qualified_early_claim:
+                logger.info("CLAIMING: Best roll meets early claim criteria")
+            else:
+                logger.info(
+                    "CLAIMING: Best roll meets late claim criteria and next hour is reset"
+                )
             async with self.react_rate_limiter:
                 await self.state.best_claim_roll.claim()
             self.state.timer_status.can_claim = False
+        else:
+            if qualified_late_claim:
+                logger.info(
+                    "CLAIM REJECTED: Roll meets late criteria but next hour is not reset"
+                )
+            else:
+                logger.info(
+                    "CLAIM REJECTED: Roll doesn't meet early or late claim criteria"
+                )
 
+        logger.info("PROCESSING COMPLETE: Resetting best claim roll")
         self.state.best_claim_roll = None
 
     async def handle_kakera_react(self, roll: MudaeKakeraRollResult) -> None:

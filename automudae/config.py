@@ -1,9 +1,9 @@
 # pylint: disable=R0903
+import logging
 from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field
-import logging
 
 logger = logging.getLogger(__name__)
 
