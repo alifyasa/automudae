@@ -30,6 +30,6 @@ class LockDebugger:
         await self.lock.acquire()
         logger.debug("Obtained Lock (%s)", self.name)
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None: # type: ignore
         self.lock.release()
         logger.debug("Released Lock (%s)", self.name)
