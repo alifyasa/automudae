@@ -1,16 +1,25 @@
-FROM python:3.12.3-slim
-
-RUN pip install --upgrade pip
+FROM python:3.12.3-slim AS builder
 
 WORKDIR /app
 
-COPY requirements.txt .
+RUN pip install poetry
 
-RUN pip3 install -r requirements.txt
+COPY pyproject.toml /app/
+COPY poetry.lock /app/
 
-COPY automudae/ ./automudae/
+RUN poetry update
 
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
+COPY README.md /app/
+COPY automudae /app/automudae
+
+RUN poetry build
+
+FROM python:3.12.3-slim AS runner
+
+WORKDIR /app
+
+COPY --from=builder /app/dist /app/dist
+
+RUN pip install /app/dist/*.whl
 
 CMD ["python", "-m", "automudae", "-f", "config/config.yaml"]

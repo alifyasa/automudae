@@ -65,6 +65,11 @@ $defs:
     type: object
   KakeraReactConfig:
     properties:
+      doNotReactToKakeraTypeIfKakeraPowerLessThan:
+        additionalProperties:
+          type: integer
+        title: Donotreacttokakeratypeifkakerapowerlessthan
+        type: object
       doNotReactToKakeraTypes:
         items:
           type: string
@@ -95,6 +100,7 @@ $defs:
       kakeraReact:
         $ref: '#/$defs/KakeraReactConfig'
         default:
+          doNotReactToKakeraTypeIfKakeraPowerLessThan: {}
           doNotReactToKakeraTypes: []
       roll:
         $ref: '#/$defs/RollConfig'

@@ -259,6 +259,16 @@ class AutoMudaeAgent(discord.Client):
             logger.debug("> Roll Not Mine")
             return
 
+        kakera_power_requirements = (
+            self.config.mudae.kakeraReact.doNotReactToKakeraTypeIfKakeraPowerLessThan
+        )
+        for kakera_type, minimum_power in kakera_power_requirements.items():
+            if (
+                kakera_type in roll.buttons
+                and self.state.timer_status.kakera_power < minimum_power
+            ):
+                return
+
         if self.state.kakera_best_pick is None:
             self.state.kakera_best_pick = roll
         elif self.state.kakera_best_pick.kakera_value <= roll.kakera_value:

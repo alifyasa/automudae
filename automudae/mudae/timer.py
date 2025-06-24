@@ -23,6 +23,7 @@ class MudaeTimerStatus(BaseModel):
     rolls_left: int = 0
     can_kakera_react: bool = False
     next_hour_is_reset: bool = False
+    kakera_power: int = 0
 
     lock: asyncio.Lock = Field(default_factory=asyncio.Lock)
 
@@ -35,7 +36,8 @@ class MudaeTimerStatus(BaseModel):
             f"can_claim={self.can_claim}, "
             f"rolls_left={self.rolls_left}, "
             f"can_kakera_react={self.can_kakera_react}, "
-            f"next_hour_is_reset={self.next_hour_is_reset})"
+            f"next_hour_is_reset={self.next_hour_is_reset}, "
+            f"kakera_power={self.kakera_power})"
         )
 
     def __str__(self) -> str:
@@ -64,6 +66,10 @@ class MudaeTimerStatus(BaseModel):
         if not kakera_pattern:
             return None
 
+        kakera_power = re.search(r"(\d+)%", clean_msg)
+        if not kakera_power:
+            return None
+
         claim_reset_pattern = re.search(
             r"(?:The next claim reset is in|you can't claim for another)\s+(?:(\d+)h\s*)?(\d+)\s*min",  # pylint: disable=C0301
             clean_msg,
@@ -84,6 +90,7 @@ class MudaeTimerStatus(BaseModel):
             rolls_left=int(rolls_pattern.group(1)) if rolls_pattern.group(1) else 0,
             can_kakera_react=kakera_pattern.group(1) == "can",
             next_hour_is_reset=next_claim_reset_in_minutes <= 60,
+            kakera_power=int(kakera_power.group(1)) if kakera_power.group(1) else 0,
         )
 
     async def update(self, new_timer_status: Self) -> None:
@@ -92,3 +99,4 @@ class MudaeTimerStatus(BaseModel):
             self.rolls_left = new_timer_status.rolls_left
             self.can_kakera_react = new_timer_status.can_kakera_react
             self.next_hour_is_reset = new_timer_status.next_hour_is_reset
+            self.kakera_power = new_timer_status.kakera_power

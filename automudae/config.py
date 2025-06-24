@@ -31,6 +31,9 @@ class RollConfig(BaseModel):
 class KakeraReactConfig(BaseModel):
 
     doNotReactToKakeraTypes: list[str] = Field(default_factory=list[str])
+    doNotReactToKakeraTypeIfKakeraPowerLessThan: dict[str, int] = Field(
+        default_factory=dict[str, int]
+    )
 
 
 class MudaeConfig(BaseModel):
