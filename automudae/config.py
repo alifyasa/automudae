@@ -3,6 +3,9 @@ from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ClaimCriteria(BaseModel):
@@ -70,7 +73,7 @@ class Config(BaseModel):
 
     @classmethod
     def from_file(cls, path: str = "config/config.yaml"):
-
+        logger.info("Loading Config from %s", path)
         with open(path, "r", encoding="utf-8") as f:
             yaml_data = yaml.safe_load(f)
             return Config(**yaml_data)
