@@ -2,10 +2,12 @@ import discord
 
 
 def discord_message_to_str(message: discord.Message) -> str:
-    msg_clean = discord.utils.remove_markdown(message.content)
+    msg_clean = (
+        discord.utils.remove_markdown(message.content)
+        or message.embeds[0].author.name
+        or ""
+    )
     partial_msg = get_partial_str(msg_clean)
-    if partial_msg == "":
-        partial_msg = "<<EMPTY>>"
     parts = [
         f"id={message.id}",
         f"author={message.author.display_name!r}",
