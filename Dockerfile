@@ -1,4 +1,4 @@
-FROM python:3.12.3-slim AS builder
+FROM python:3.12.3-slim
 
 WORKDIR /app
 
@@ -12,14 +12,6 @@ RUN poetry update
 COPY README.md /app/
 COPY automudae /app/automudae
 
-RUN poetry build
+RUN poetry install
 
-FROM python:3.12.3-slim AS runner
-
-WORKDIR /app
-
-COPY --from=builder /app/dist /app/dist
-
-RUN pip install /app/dist/*.whl
-
-CMD ["python", "-m", "automudae", "-f", "config/config.yaml"]
+CMD ["poetry", "run", "python", "-m", "automudae"]
