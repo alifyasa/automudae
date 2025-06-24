@@ -71,7 +71,7 @@ class AutoMudaeAgent(discord.Client):
 
         self.tasks = [
             hourly_roll_loop(self.send_timer_status_message).start(),
-            asyncio.create_task(self.roll_loop()),
+            asyncio.create_task(self.execute_rolls_loop()),
             asyncio.create_task(self.handle_rolls_loop()),
             asyncio.create_task(self.refresh_loop()),
         ]
@@ -131,10 +131,10 @@ class AutoMudaeAgent(discord.Client):
         async with self.command_rate_limiter:
             await self.mudae_channel.send("$tu")
 
-    async def roll_loop(self) -> None:
+    async def execute_rolls_loop(self) -> None:
         while True:
             await self.state.timer_status.wait_for_rolls()
-            async with self.state.timer_status.debug_lock("roll_loop"):
+            async with self.state.timer_status.debug_lock("execute_rolls_loop"):
                 if not self.mudae_channel:
                     continue
 
@@ -161,12 +161,12 @@ class AutoMudaeAgent(discord.Client):
         while True:
             result = await self.state.roll_queue.get()
             async with self.state.timer_status.debug_lock("handle_rolls_loop"):
+                self.state.timer_status.rolls_left -= 1
                 if isinstance(result, MudaeClaimableRollResult):
                     await self.handle_claim(result)
                 else:
                     await self.handle_kakera_react(result)
                 await self.handle_finalizer()
-                self.state.timer_status.rolls_left -= 1
                 logger.info(
                     "ROLL PROCESSING COMPLETE: %d rolls remaining",
                     self.state.timer_status.rolls_left,
