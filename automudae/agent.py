@@ -263,6 +263,15 @@ class AutoMudaeAgent(discord.Client):
             button.emoji.name for button in roll.buttons if button.emoji is not None
         ]
 
+        if "kakeraP" in kakera_buttons:
+            time_to_claim = self.get_reaction_time(roll)
+            logger.info("> Kakera React: %s", kakera_buttons)
+            logger.info("> Reaction Time: %.2fs", time_to_claim)
+            async with self.react_rate_limiter:
+                await roll.kakera_react()
+                self.state.timer_status.can_kakera_react = False
+            return
+
         kakera_power_requirements = (
             self.config.mudae.kakeraReact.doNotReactToKakeraTypeIfKakeraPowerLessThan
         )
@@ -278,19 +287,17 @@ class AutoMudaeAgent(discord.Client):
         elif self.state.kakera_best_pick.kakera_value <= roll.kakera_value:
             self.state.kakera_best_pick = roll
 
-        if self.state.timer_status.rolls_left != 0:
-            logger.debug("> Rolls Not 0 Yet")
-            return
-
         for button_name in kakera_buttons:
             if button_name in self.config.mudae.kakeraReact.doNotReactToKakeraTypes:
                 logger.info("> Will not react to %s", button_name)
                 return
-        if (
-            "kakeraP" not in kakera_buttons
-            and not self.state.timer_status.can_kakera_react
-        ):
-            logger.info("> Cannot react to non-purple kakera")
+
+        if self.state.timer_status.rolls_left != 0:
+            logger.debug("> Rolls Not 0 Yet")
+            return
+
+        if not self.state.timer_status.can_kakera_react:
+            logger.info("> Cannot React")
             return
 
         time_to_claim = self.get_reaction_time(roll)
