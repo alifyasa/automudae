@@ -19,6 +19,10 @@
     "terminal.integrated.scrollback": 10000,
     // Formatter
     "editor.defaultFormatter": "ms-python.black-formatter",
+    "pylint.args": [
+        "--load-plugins",
+        "pylint_pydantic"
+    ],
     "[json]": {
         "editor.defaultFormatter": "vscode.json-language-features"
     },

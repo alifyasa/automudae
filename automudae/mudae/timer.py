@@ -7,7 +7,7 @@ from typing import Self
 import discord
 from pydantic import BaseModel, Field
 
-from automudae.mudae.helper import LockDebugger
+from automudae.mudae.helper.concurrency import EventDebugger, LockDebugger
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -26,6 +26,7 @@ class MudaeTimerStatus(BaseModel):
     kakera_power: int = 0
 
     lock: asyncio.Lock = Field(default_factory=asyncio.Lock)
+    roll_is_available: asyncio.Event = Field(default_factory=asyncio.Event)
 
     class Config:
         arbitrary_types_allowed = True
@@ -45,6 +46,10 @@ class MudaeTimerStatus(BaseModel):
 
     def debug_lock(self, name: str) -> LockDebugger:
         return LockDebugger(self.lock, name)
+
+    async def wait_for_rolls(self) -> None:
+        event_debugger = EventDebugger(self.roll_is_available, "Roll is Available")
+        await event_debugger.wait()
 
     @classmethod
     async def create(cls, message: discord.Message, current_user: MudaeTimerOwner):
@@ -100,3 +105,8 @@ class MudaeTimerStatus(BaseModel):
             self.can_kakera_react = new_timer_status.can_kakera_react
             self.next_hour_is_reset = new_timer_status.next_hour_is_reset
             self.kakera_power = new_timer_status.kakera_power
+
+            if self.rolls_left > 0:
+                self.roll_is_available.set()
+            else:
+                self.roll_is_available.clear()

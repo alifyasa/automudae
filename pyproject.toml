@@ -30,7 +30,7 @@ types-pyyaml = "^6.0.12.20250516"
 pylint-pydantic = "^0.3.5"
 
 [tool.pylint.main]
-disable = ["C0114", "C0115", "C0116", "R0911", "C0301"]
+disable = ["C0114", "C0115", "C0116", "R0911", "C0301", "R0903"]
 load-plugins = "pylint_pydantic"
 
 [tool.pylint.format]
