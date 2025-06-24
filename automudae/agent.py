@@ -129,7 +129,7 @@ class AutoMudaeAgent(discord.Client):
 
     async def roll_loop(self) -> None:
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
             async with self.state.timer_status.debug_lock("roll_loop"):
                 if not self.mudae_channel:
                     continue
