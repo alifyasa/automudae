@@ -276,7 +276,11 @@ class MudaeKakeraRollResult(MudaeRoll):
             owner=owner,
             message=message,
             buttons=buttons,
-            kakera_value=sum(KAKERA_TYPES[button.emoji.name] for button in buttons),
+            kakera_value=sum(
+                KAKERA_TYPES[button.emoji.name]
+                for button in buttons
+                if button.emoji is not None
+            ),
         )
 
 
