@@ -25,6 +25,6 @@ class EventDebugger:
         self.name = name
 
     async def wait(self) -> None:
-        logger.debug("Waiting for Event (%s)", self.name)
+        logger.debug("Waiting for Event: %s", self.name)
         await self.event.wait()
-        logger.debug("Obtained Event (%s)", self.name)
+        logger.debug("Obtained Event: %s", self.name)
