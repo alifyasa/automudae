@@ -259,12 +259,16 @@ class AutoMudaeAgent(discord.Client):
             logger.debug("> Roll Not Mine")
             return
 
+        kakera_buttons = [
+            button.emoji.name for button in roll.buttons if button.emoji is not None
+        ]
+
         kakera_power_requirements = (
             self.config.mudae.kakeraReact.doNotReactToKakeraTypeIfKakeraPowerLessThan
         )
         for kakera_type, minimum_power in kakera_power_requirements.items():
             if (
-                kakera_type in roll.buttons
+                kakera_type in kakera_buttons
                 and self.state.timer_status.kakera_power < minimum_power
             ):
                 return
@@ -278,9 +282,6 @@ class AutoMudaeAgent(discord.Client):
             logger.debug("> Rolls Not 0 Yet")
             return
 
-        kakera_buttons = [
-            button.emoji.name for button in roll.buttons if button.emoji is not None
-        ]
         for button_name in kakera_buttons:
             if button_name in self.config.mudae.kakeraReact.doNotReactToKakeraTypes:
                 logger.info("> Will not react to %s", button_name)
