@@ -139,6 +139,7 @@ class AutoMudaeAgent(discord.Client):
                     continue
 
                 if self.state.timer_status.rolls_left <= 0:
+                    await self.send_timer_status_message()
                     continue
 
                 if (
@@ -155,9 +156,6 @@ class AutoMudaeAgent(discord.Client):
 
                 async with self.command_rate_limiter:
                     await self.mudae_channel.send(self.config.mudae.roll.command)
-
-                if self.state.timer_status.rolls_left <= 0:
-                    await self.send_timer_status_message()
 
     async def handle_rolls_loop(self) -> None:
         while True:
