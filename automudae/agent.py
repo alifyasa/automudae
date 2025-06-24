@@ -72,6 +72,7 @@ class AutoMudaeAgent(discord.Client):
             hourly_roll_loop(self.send_timer_status_message).start(),
             asyncio.create_task(self.roll_loop()),
             asyncio.create_task(self.handle_rolls_loop()),
+            asyncio.create_task(self.refresh_loop()),
         ]
 
         await self.send_timer_status_message()
@@ -324,3 +325,10 @@ class AutoMudaeAgent(discord.Client):
 
     def get_reaction_time(self, roll: MudaeRollResult) -> float:
         return (datetime.now(tz=timezone.utc) - roll.message.created_at).total_seconds()
+
+    async def refresh_loop(self) -> None:
+        while True:
+            await asyncio.gather(
+                *[connection.refresh() for connection in self.connections]
+            )
+            await asyncio.sleep(1)
