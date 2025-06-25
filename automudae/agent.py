@@ -126,6 +126,8 @@ class AutoMudaeAgent(discord.Client):
             timer_status := await MudaeTimerStatus.create(message, self.user)
         ) is not None:
             await self.state.timer_status.update(timer_status)
+            self.state.rolls_handled = 0
+            self.state.rolls_executed = 0
             logger.info(self.state.timer_status)
             return
 
