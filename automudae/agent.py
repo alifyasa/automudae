@@ -166,12 +166,17 @@ class AutoMudaeAgent(discord.Client):
         while True:
             result = await self.state.roll_queue.get()
             async with self.state.timer_status.debug_lock("handle_rolls_loop"):
-                self.state.timer_status.rolls_left -= 1
+
+                if self.user and result.owner.id == self.user.id:
+                    self.state.timer_status.rolls_left -= 1
+
                 if isinstance(result, MudaeClaimableRollResult):
                     await self.handle_claim(result)
                 else:
                     await self.handle_kakera_react(result)
+
                 await self.handle_finalizer()
+
                 logger.info(
                     "ROLL PROCESSING COMPLETE: %d rolls remaining",
                     self.state.timer_status.rolls_left,
