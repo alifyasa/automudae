@@ -26,7 +26,10 @@ class AutoMudaeAgentState:
     def __init__(self) -> None:
         self.best_claim_roll: MudaeClaimableRollResult | None = None
         self.kakera_best_pick: MudaeKakeraRollResult | None = None
+
         self.timer_status = MudaeTimerStatus()
+        self.rolls_executed = 0
+        self.rolls_handled = 0
 
         self.roll_command_queue: asyncio.Queue[MudaeRollCommand] = asyncio.Queue()
         self.roll_queue: asyncio.Queue[
@@ -136,15 +139,13 @@ class AutoMudaeAgent(discord.Client):
         while True:
             if temp_sleep:
                 await asyncio.sleep(temp_sleep)
-                temp_sleep = None
             await self.state.timer_status.wait_for_rolls()
             async with self.state.timer_status.debug_lock("execute_rolls_loop"):
                 if not self.mudae_channel:
                     continue
 
-                if self.state.timer_status.rolls_left <= 0:
+                if self.state.rolls_handled >= self.state.timer_status.rolls_available:
                     await self.send_timer_status_message()
-                    temp_sleep = 2.0
                     continue
 
                 if (
@@ -159,8 +160,20 @@ class AutoMudaeAgent(discord.Client):
                 ):
                     continue
 
+                if self.state.rolls_executed >= self.state.timer_status.rolls_available:
+
+                    if temp_sleep is None:
+                        # Requeue after 2 seconds of sleep
+                        temp_sleep = 2.0
+                        continue
+
+                    # Assumed have been requeued
+                    temp_sleep = None
+                    # Continue rolling
+
                 async with self.command_rate_limiter:
                     await self.mudae_channel.send(self.config.mudae.roll.command)
+                    self.state.rolls_executed += 1
 
     async def handle_rolls_loop(self) -> None:
         while True:
@@ -168,7 +181,7 @@ class AutoMudaeAgent(discord.Client):
             async with self.state.timer_status.debug_lock("handle_rolls_loop"):
 
                 if self.user and result.owner.id == self.user.id:
-                    self.state.timer_status.rolls_left -= 1
+                    self.state.rolls_handled += 1
 
                 if isinstance(result, MudaeClaimableRollResult):
                     await self.handle_claim(result)
@@ -179,7 +192,7 @@ class AutoMudaeAgent(discord.Client):
 
                 logger.info(
                     "ROLL PROCESSING COMPLETE: %d rolls remaining",
-                    self.state.timer_status.rolls_left,
+                    self.state.timer_status.rolls_available - self.state.rolls_handled,
                 )
 
     async def handle_claim(self, roll: MudaeClaimableRollResult) -> None:
@@ -259,10 +272,10 @@ class AutoMudaeAgent(discord.Client):
 
         assert self.state.best_claim_roll
 
-        if self.state.timer_status.rolls_left != 0:
+        if self.state.timer_status.rolls_available > self.state.rolls_handled:
             logger.info(
                 "CLAIM DEFERRED: Waiting for %s more rolls before claiming best",
-                self.state.timer_status.rolls_left,
+                self.state.timer_status.rolls_available - self.state.rolls_handled,
             )
             return
 
@@ -359,7 +372,7 @@ class AutoMudaeAgent(discord.Client):
                 logger.info("> Will not react to %s", button_name)
                 return
 
-        if self.state.timer_status.rolls_left != 0:
+        if self.state.timer_status.rolls_available > self.state.rolls_handled:
             logger.debug("> Rolls Not 0 Yet")
             return
 
@@ -375,7 +388,7 @@ class AutoMudaeAgent(discord.Client):
             self.state.timer_status.can_kakera_react = False
 
     async def handle_finalizer(self) -> None:
-        if self.state.timer_status.rolls_left != 0:
+        if self.state.timer_status.rolls_available > self.state.rolls_handled:
             logger.debug("> Rolls Not 0 Yet")
             return
 

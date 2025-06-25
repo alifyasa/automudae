@@ -20,7 +20,7 @@ MudaeTimerOwner = (
 class MudaeTimerStatus(BaseModel):
 
     can_claim: bool = False
-    rolls_left: int = 0
+    rolls_available: int = 0
     can_kakera_react: bool = False
     next_hour_is_reset: bool = False
     kakera_power: int = 0
@@ -35,7 +35,7 @@ class MudaeTimerStatus(BaseModel):
         return (
             f"{self.__class__.__name__}("
             f"can_claim={self.can_claim}, "
-            f"rolls_left={self.rolls_left}, "
+            f"rolls_left={self.rolls_available}, "
             f"can_kakera_react={self.can_kakera_react}, "
             f"next_hour_is_reset={self.next_hour_is_reset}, "
             f"kakera_power={self.kakera_power})"
@@ -92,7 +92,9 @@ class MudaeTimerStatus(BaseModel):
 
         return MudaeTimerStatus(
             can_claim=claim_pattern.group(1) == "can",
-            rolls_left=int(rolls_pattern.group(1)) if rolls_pattern.group(1) else 0,
+            rolls_available=(
+                int(rolls_pattern.group(1)) if rolls_pattern.group(1) else 0
+            ),
             can_kakera_react=kakera_pattern.group(1) == "can",
             next_hour_is_reset=next_claim_reset_in_minutes <= 60,
             kakera_power=int(kakera_power.group(1)) if kakera_power.group(1) else 0,
@@ -101,12 +103,12 @@ class MudaeTimerStatus(BaseModel):
     async def update(self, new_timer_status: Self) -> None:
         async with self.debug_lock("update"):
             self.can_claim = new_timer_status.can_claim
-            self.rolls_left = new_timer_status.rolls_left
+            self.rolls_available = new_timer_status.rolls_available
             self.can_kakera_react = new_timer_status.can_kakera_react
             self.next_hour_is_reset = new_timer_status.next_hour_is_reset
             self.kakera_power = new_timer_status.kakera_power
 
-            if self.rolls_left > 0:
+            if self.rolls_available > 0:
                 self.roll_is_available.set()
             else:
                 self.roll_is_available.clear()
