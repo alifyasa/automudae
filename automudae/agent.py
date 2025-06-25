@@ -321,32 +321,32 @@ class AutoMudaeAgent(discord.Client):
         logger.info(roll)
 
         if not self.user:
-            logger.error("> Not Logged In")
+            logger.error("KAKERA REACT FAILED: Not logged in - cannot identify user")
             return
 
         if not self.mudae_channel:
-            logger.error("> Mudae Channel Not Set")
+            logger.error("KAKERA REACT FAILED: Mudae channel not configured")
             return
 
         current_time = datetime.now(tz=timezone.utc)
         roll_time_elapsed = current_time - roll.message.created_at
         if roll_time_elapsed.total_seconds() >= 30:
-            logger.debug("> Roll older than 30 seconds")
+            logger.info("KAKERA REACT SKIPPED: Roll too old (%.1fs > 30s timeout)", roll_time_elapsed.total_seconds())
             return
 
         roll_is_mine = roll.owner.id == self.user.id
         if not roll_is_mine:
-            logger.debug("> Roll Not Mine")
+            logger.info("KAKERA REACT SKIPPED: Roll belongs to user %s, not me (%s)", roll.owner.id, self.user.id)
             return
 
         kakera_buttons = [
             button.emoji.name for button in roll.buttons if button.emoji is not None
         ]
+        logger.info("KAKERA BUTTONS FOUND: %s", kakera_buttons)
 
         if "kakeraP" in kakera_buttons:
             time_to_claim = self.get_reaction_time(roll)
-            logger.info("> Kakera React: %s", kakera_buttons)
-            logger.info("> Reaction Time: %.2fs", time_to_claim)
+            logger.info("KAKERA REACTING: kakeraP found - immediate reaction (reaction time: %.2fs)", time_to_claim)
             async with self.react_rate_limiter:
                 await roll.kakera_react()
                 self.state.timer_status.can_kakera_react = False
@@ -360,32 +360,44 @@ class AutoMudaeAgent(discord.Client):
                 kakera_type in kakera_buttons
                 and self.state.timer_status.kakera_power < minimum_power
             ):
+                logger.info("KAKERA REACT SKIPPED: %s requires %s power but only have %s",
+                           kakera_type, minimum_power, self.state.timer_status.kakera_power)
                 return
 
+        logger.info("PROCESSING: Evaluating for best kakera pick selection")
+
         if self.state.kakera_best_pick is None:
+            logger.info("BEST KAKERA UPDATED: No previous best pick - setting this as best (value: %s)", roll.kakera_value)
             self.state.kakera_best_pick = roll
         elif self.state.kakera_best_pick.kakera_value <= roll.kakera_value:
+            logger.info("BEST KAKERA UPDATED: Higher value (%s >= %s) - replacing previous best",
+                       roll.kakera_value, self.state.kakera_best_pick.kakera_value)
             self.state.kakera_best_pick = roll
+        else:
+            logger.info("BEST KAKERA UNCHANGED: Current roll value (%s) doesn't beat existing best (%s)",
+                       roll.kakera_value, self.state.kakera_best_pick.kakera_value)
 
         for button_name in kakera_buttons:
             if button_name in self.config.mudae.kakeraReact.doNotReactToKakeraTypes:
-                logger.info("> Will not react to %s", button_name)
+                logger.info("KAKERA REACT BLOCKED: %s is in blocked kakera types list", button_name)
                 return
 
         if self.state.timer_status.rolls_available > self.state.rolls_handled:
-            logger.debug("> Rolls Not 0 Yet")
+            remaining_rolls = self.state.timer_status.rolls_available - self.state.rolls_handled
+            logger.info("KAKERA REACT DEFERRED: Waiting for %s more rolls before reacting to best", remaining_rolls)
             return
 
         if not self.state.timer_status.can_kakera_react:
-            logger.info("> Cannot React")
+            logger.info("KAKERA REACT BLOCKED: Timer cooldown active - cannot react yet")
             return
 
         time_to_claim = self.get_reaction_time(roll)
-        logger.info("> Kakera React: %s", kakera_buttons)
-        logger.info("> Reaction Time: %.2fs", time_to_claim)
+        logger.info("KAKERA REACTING: Best pick selected with buttons %s (reaction time: %.2fs)", kakera_buttons, time_to_claim)
         async with self.react_rate_limiter:
             await roll.kakera_react()
             self.state.timer_status.can_kakera_react = False
+
+        self.state.kakera_best_pick = None
 
     async def handle_finalizer(self) -> None:
         if self.state.timer_status.rolls_available > self.state.rolls_handled:
