@@ -35,7 +35,7 @@ class MudaeTimerStatus(BaseModel):
         return (
             f"{self.__class__.__name__}("
             f"can_claim={self.can_claim}, "
-            f"rolls_left={self.rolls_available}, "
+            f"rolls_available={self.rolls_available}, "
             f"can_kakera_react={self.can_kakera_react}, "
             f"next_hour_is_reset={self.next_hour_is_reset}, "
             f"kakera_power={self.kakera_power})"
