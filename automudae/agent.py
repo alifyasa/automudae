@@ -135,43 +135,29 @@ class AutoMudaeAgent(discord.Client):
             await self.mudae_channel.send("$tu")
 
     async def execute_rolls_loop(self) -> None:
-        temp_sleep: float | None = None
         while True:
-            if temp_sleep:
-                await asyncio.sleep(temp_sleep)
-            await self.state.timer_status.wait_for_rolls()
-            async with self.state.timer_status.debug_lock("execute_rolls_loop"):
-                if not self.mudae_channel:
-                    continue
-
-                if self.state.rolls_handled >= self.state.timer_status.rolls_available:
-                    await self.send_timer_status_message()
-                    continue
-
-                if (
-                    self.config.mudae.roll.doNotRollWhenCanotClaim
-                    and not self.state.timer_status.can_claim
-                ):
-                    continue
-
-                if (
-                    self.config.mudae.roll.doNotRollWhenCannotKakeraReact
-                    and not self.state.timer_status.can_kakera_react
-                ):
-                    continue
-
-                if self.state.rolls_executed >= self.state.timer_status.rolls_available:
-
-                    if temp_sleep is None:
-                        # Requeue after 2 seconds of sleep
-                        temp_sleep = 2.0
+            async with self.command_rate_limiter:
+                await self.state.timer_status.wait_for_rolls()
+                async with self.state.timer_status.debug_lock("execute_rolls_loop"):
+                    if not self.mudae_channel:
                         continue
 
-                    # Assumed have been requeued
-                    temp_sleep = None
-                    # Continue rolling
+                    if self.state.rolls_handled >= self.state.timer_status.rolls_available:
+                        await self.send_timer_status_message()
+                        continue
 
-                async with self.command_rate_limiter:
+                    if (
+                        self.config.mudae.roll.doNotRollWhenCanotClaim
+                        and not self.state.timer_status.can_claim
+                    ):
+                        continue
+
+                    if (
+                        self.config.mudae.roll.doNotRollWhenCannotKakeraReact
+                        and not self.state.timer_status.can_kakera_react
+                    ):
+                        continue
+
                     await self.mudae_channel.send(self.config.mudae.roll.command)
                     self.state.rolls_executed += 1
 
