@@ -132,7 +132,11 @@ class AutoMudaeAgent(discord.Client):
             await self.mudae_channel.send("$tu")
 
     async def execute_rolls_loop(self) -> None:
+        temp_sleep: float | None = None
         while True:
+            if temp_sleep:
+                await asyncio.sleep(temp_sleep)
+                temp_sleep = None
             await self.state.timer_status.wait_for_rolls()
             async with self.state.timer_status.debug_lock("execute_rolls_loop"):
                 if not self.mudae_channel:
@@ -140,6 +144,7 @@ class AutoMudaeAgent(discord.Client):
 
                 if self.state.timer_status.rolls_left <= 0:
                     await self.send_timer_status_message()
+                    temp_sleep = 2.0
                     continue
 
                 if (
