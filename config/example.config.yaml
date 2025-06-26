@@ -10,6 +10,12 @@ mudae:
     command: $w
     doNotRollWhenCanotClaim: True
     doNotRollWhenCannotKakeraReact: False
+    rollResetMinuteOffset: 0
+  kakeraReact:
+    doNotReactToKakeraTypes:
+      - kakera
+    doNotReactToKakeraTypeIfKakeraPowerLessThan:
+      kakeraT: 100
   claim:
     snipe:
       wish: True
