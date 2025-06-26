@@ -223,7 +223,7 @@ KAKERA_TYPES = {
     "kakeraO": 701,
     "kakeraR": 1401,
     "kakeraW": 3001,
-    "kakeraL": 1000,
+    "kakeraL": 500,
 }
 
 
