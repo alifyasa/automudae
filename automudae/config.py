@@ -25,10 +25,10 @@ class ClaimConfig(BaseModel):
 
 class RollConfig(BaseModel):
 
-    command: Literal["$wg", "$wa", "$w"] = "$w"
-    doNotRollWhenCanotClaim: bool = True
-    doNotRollWhenCannotKakeraReact: bool = False
-    rollResetMinuteOffset: int = 0
+    command: Literal["$wg", "$wa", "$w"]
+    doNotRollWhenCanotClaim: bool
+    doNotRollWhenCannotKakeraReact: bool
+    rollResetMinuteOffset: int
 
 
 class KakeraReactConfig(BaseModel):
@@ -41,7 +41,7 @@ class KakeraReactConfig(BaseModel):
 
 class MudaeConfig(BaseModel):
 
-    roll: RollConfig = RollConfig()
+    roll: RollConfig
     claim: ClaimConfig = ClaimConfig()
     kakeraReact: KakeraReactConfig = KakeraReactConfig()
 
