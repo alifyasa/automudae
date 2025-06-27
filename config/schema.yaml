@@ -3,28 +3,37 @@ $defs:
     properties:
       earlyClaim:
         $ref: '#/$defs/ClaimCriteria'
-        default:
-          character: []
-          minKakera: 10000
-          series: []
-          wish: false
       lateClaim:
         $ref: '#/$defs/ClaimCriteria'
-        default:
-          character: []
-          minKakera: 10000
-          series: []
-          wish: false
       snipe:
         $ref: '#/$defs/ClaimCriteria'
-        default:
-          character: []
-          minKakera: 10000
-          series: []
-          wish: false
     title: ClaimConfig
     type: object
   ClaimCriteria:
+    properties:
+      character:
+        items:
+          type: string
+        title: Character
+        type: array
+      exception:
+        $ref: '#/$defs/Criteria'
+      minKakera:
+        default: 10000
+        title: Minkakera
+        type: integer
+      series:
+        items:
+          type: string
+        title: Series
+        type: array
+      wish:
+        default: false
+        title: Wish
+        type: boolean
+    title: ClaimCriteria
+    type: object
+  Criteria:
     properties:
       character:
         items:
@@ -44,7 +53,7 @@ $defs:
         default: false
         title: Wish
         type: boolean
-    title: ClaimCriteria
+    title: Criteria
     type: object
   DiscordConfig:
     properties:
@@ -81,40 +90,17 @@ $defs:
     properties:
       claim:
         $ref: '#/$defs/ClaimConfig'
-        default:
-          earlyClaim:
-            character: []
-            minKakera: 10000
-            series: []
-            wish: false
-          lateClaim:
-            character: []
-            minKakera: 10000
-            series: []
-            wish: false
-          snipe:
-            character: []
-            minKakera: 10000
-            series: []
-            wish: false
       kakeraReact:
         $ref: '#/$defs/KakeraReactConfig'
-        default:
-          doNotReactToKakeraTypeIfKakeraPowerLessThan: {}
-          doNotReactToKakeraTypes: []
       roll:
         $ref: '#/$defs/RollConfig'
-        default:
-          command: $w
-          doNotRollWhenCannotKakeraReact: false
-          doNotRollWhenCanotClaim: true
-          rollResetMinuteOffset: 0
+    required:
+    - roll
     title: MudaeConfig
     type: object
   RollConfig:
     properties:
       command:
-        default: $w
         enum:
         - $wg
         - $wa
@@ -122,17 +108,19 @@ $defs:
         title: Command
         type: string
       doNotRollWhenCannotKakeraReact:
-        default: false
         title: Donotrollwhencannotkakerareact
         type: boolean
       doNotRollWhenCanotClaim:
-        default: true
         title: Donotrollwhencanotclaim
         type: boolean
       rollResetMinuteOffset:
-        default: 0
         title: Rollresetminuteoffset
         type: integer
+    required:
+    - command
+    - doNotRollWhenCanotClaim
+    - doNotRollWhenCannotKakeraReact
+    - rollResetMinuteOffset
     title: RollConfig
     type: object
 additionalProperties: false

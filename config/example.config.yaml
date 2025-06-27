@@ -18,12 +18,22 @@ mudae:
       kakeraT: 100
   claim:
     snipe:
+      # Snipe my wishes, Nilou, and characters from Wuthering Waves
       wish: True
       character:
         - Nilou
       series:
         - Wuthering Waves
     earlyClaim:
+      # If next hour is not reset yet,
+      # but there is a roll that meet this criteria (more or equal to 150 kakera)
+      # after rolling complete, claim it
+      # except if its a character from One Piece
       minKakera: 150
+      exception:
+        series:
+          - One Piece
     lateClaim:
+      # If next hour is reset, after rolling complete,
+      # claim a roll with the highest kakera value above or equal to 40
       minKakera: 40
