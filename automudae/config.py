@@ -8,12 +8,16 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 
-class ClaimCriteria(BaseModel):
+class Criteria(BaseModel):
 
     wish: bool = False
     character: list[str] = Field(default_factory=list[str])
     series: list[str] = Field(default_factory=list[str])
     minKakera: int = 10_000
+
+
+class ClaimCriteria(Criteria):
+    exception: Criteria = Criteria()
 
 
 class ClaimConfig(BaseModel):

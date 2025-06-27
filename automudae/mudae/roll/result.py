@@ -6,7 +6,7 @@ from datetime import datetime
 
 import discord
 
-from automudae.config import ClaimCriteria
+from automudae.config import Criteria
 from automudae.mudae.helper.common import get_buttons
 from automudae.mudae.roll import MUDAE_TIMEOUT_SEC, MudaeRoll, MudaeRollOwner
 from automudae.mudae.roll.command import MudaeRollCommand
@@ -60,7 +60,7 @@ class MudaeClaimableRollResult(MudaeRoll):
         for button in get_buttons(self.message):
             await button.click()
 
-    def is_qualified(self, criteria: ClaimCriteria, user: MudaeRollOwner) -> bool:
+    def is_qualified(self, criteria: Criteria, user: MudaeRollOwner) -> bool:
         character_qualify = self.character in criteria.character
         series_qualify = self.series in criteria.series
         kakera_qualify = self.kakera_value >= criteria.minKakera
