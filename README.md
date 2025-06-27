@@ -1,16 +1,15 @@
 # AutoMudae
 
-Plays Mudae for You. Automatically:
-1. Rolls
-2. Claims
-3. Kakera Reacts
+Plays Mudae for you – performs rolls, claims, and kakera reactions automatically.
 
-## How to Use
+## Quickstart
 
-1. Configure in `config/config.yaml`. See [`config/example.config.yaml`](config/example.config.yaml)
-2. Configure Docker in `docker-compose.yaml`. See [`example.docker-compose.yaml`](example.docker-compose.yaml)
-3. `make up`
+1. Clone this repository.
+2. Rename `config/example.config.yaml` to `config/config.yaml` and adjust the settings.
+3. Run the application with **Docker** via `docker-compose.yaml`. See [`example.docker-compose.yaml`](example.docker-compose.yaml) for reference.
 
-## Example
+## Development
 
-See [`config/example.config.yaml`](config/example.config.yaml) and [`example.docker-compose.yaml`](example.docker-compose.yaml).
+1. Clone this repository,
+2. Install [Python](https://www.python.org/) and [Poetry](https://python-poetry.org/).
+3. In the repository folder, run `poetry install`.
