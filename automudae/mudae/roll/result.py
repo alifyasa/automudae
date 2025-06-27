@@ -3,58 +3,17 @@ import logging
 import re
 from asyncio import Queue
 from datetime import datetime
-from typing import Literal, get_args
 
 import discord
-from pydantic import BaseModel
 
 from automudae.config import ClaimCriteria
 from automudae.mudae.helper.common import get_buttons
+from automudae.mudae.roll import MUDAE_TIMEOUT_SEC, MudaeRoll, MudaeRollOwner
+from automudae.mudae.roll.command import MudaeRollCommand
+from automudae.mudae.roll.helper import get_roll_command_from_roll_message
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-MUDAE_TIMEOUT_SEC = 0.5
-MudaeRollOwner = (
-    discord.User | discord.ClientUser | discord.Member | discord.user.BaseUser
-)
-MudaeRollCommandType = Literal["$wg", "$wa", "$w", "$wx"]
-
-
-class MudaeRoll(BaseModel):
-    owner: MudaeRollOwner
-    message: discord.Message
-
-    class Config:
-        arbitrary_types_allowed = True
-
-
-class MudaeRollCommand(MudaeRoll):
-
-    command: MudaeRollCommandType
-
-    def __repr__(self) -> str:
-
-        return (
-            f"{self.__class__.__name__}("
-            f"owner={self.owner.name!r}, "
-            f"command={self.command!r})"
-        )
-
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    @classmethod
-    def create(cls, message: discord.Message):
-        if message.content not in get_args(MudaeRollCommandType):
-            logger.debug("Message is not in %s", get_args(MudaeRollCommandType))
-            return None
-
-        return MudaeRollCommand(
-            command=message.content,  # type: ignore
-            owner=message.author,
-            message=message,
-        )
 
 
 async def get_roll_command(
@@ -69,36 +28,6 @@ async def get_roll_command(
                 return roll_command
         finally:
             queue.task_done()
-
-
-class MudaeRouletteLimitedError(MudaeRoll):
-
-    def __repr__(self) -> str:
-
-        return f"{self.__class__.__name__}(owner={self.owner.name!r})"
-
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    @classmethod
-    async def create(
-        cls, message: discord.Message, roll_commands_queue: Queue[MudaeRollCommand]
-    ):
-        clean_msg_content = discord.utils.remove_markdown(message.content)
-        if not re.findall(
-            r"(.+), the roulette is limited to (\d+) uses per hour. (\d+) min left.",
-            clean_msg_content,
-        ):
-            return None
-        owner: MudaeRollOwner
-        if message.interaction:
-            owner = message.interaction.user
-        else:
-            roll_command = await get_roll_command(
-                roll_commands_queue, message.created_at
-            )
-            owner = roll_command.owner
-        return MudaeRouletteLimitedError(owner=owner, message=message)
 
 
 class MudaeClaimableRollResult(MudaeRoll):
@@ -143,9 +72,7 @@ class MudaeClaimableRollResult(MudaeRoll):
         return character_qualify or series_qualify or kakera_qualify or wish_qualify
 
     @classmethod
-    async def create(
-        cls, message: discord.Message, roll_commands_queue: Queue[MudaeRollCommand]
-    ):
+    async def create(cls, message: discord.Message):
         if not message.embeds:
             logger.debug("Not Mudae Roll: No Embeds")
             return None
@@ -199,9 +126,7 @@ class MudaeClaimableRollResult(MudaeRoll):
         if message.interaction:
             owner = message.interaction.user
         else:
-            roll_command = await get_roll_command(
-                roll_commands_queue, message.created_at
-            )
+            roll_command = await get_roll_command_from_roll_message(message)
             owner = roll_command.owner
 
         return MudaeClaimableRollResult(
@@ -249,9 +174,7 @@ class MudaeKakeraRollResult(MudaeRoll):
             await button.click()
 
     @classmethod
-    async def create(
-        cls, message: discord.Message, roll_commands_queue: Queue[MudaeRollCommand]
-    ):
+    async def create(cls, message: discord.Message):
         if not message.components:
             return None
 
@@ -267,9 +190,7 @@ class MudaeKakeraRollResult(MudaeRoll):
         if message.interaction:
             owner = message.interaction.user
         else:
-            roll_command = await get_roll_command(
-                roll_commands_queue, message.created_at
-            )
+            roll_command = await get_roll_command_from_roll_message(message)
             owner = roll_command.owner
 
         return MudaeKakeraRollResult(

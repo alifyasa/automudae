@@ -9,12 +9,10 @@ from discord.ext import tasks
 
 from automudae.config import Config
 from automudae.helper import discord_message_to_str
-from automudae.mudae.roll import (
+from automudae.mudae.roll.result import (
     MudaeClaimableRollResult,
     MudaeKakeraRollResult,
-    MudaeRollCommand,
     MudaeRollResult,
-    MudaeRouletteLimitedError,
 )
 from automudae.mudae.timer import MudaeTimerStatus
 
@@ -31,7 +29,6 @@ class AutoMudaeAgentState:
         self.rolls_executed = 0
         self.rolls_handled = 0
 
-        self.roll_command_queue: asyncio.Queue[MudaeRollCommand] = asyncio.Queue()
         self.roll_queue: asyncio.Queue[
             MudaeClaimableRollResult | MudaeKakeraRollResult
         ] = asyncio.Queue()
@@ -93,33 +90,14 @@ class AutoMudaeAgent(discord.Client):
 
         logger.info(discord_message_to_str(message))
 
-        if (roll_command := MudaeRollCommand.create(message)) is not None:
-            await self.state.roll_command_queue.put(roll_command)
-            logger.debug(roll_command)
-            return
-
         if (
-            claimable_roll := await MudaeClaimableRollResult.create(
-                message, self.state.roll_command_queue
-            )
+            claimable_roll := await MudaeClaimableRollResult.create(message)
         ) is not None:
             await self.state.roll_queue.put(claimable_roll)
             return
 
-        if (
-            kakera_roll := await MudaeKakeraRollResult.create(
-                message, self.state.roll_command_queue
-            )
-        ) is not None:
+        if (kakera_roll := await MudaeKakeraRollResult.create(message)) is not None:
             await self.state.roll_queue.put(kakera_roll)
-            return
-
-        if (
-            roulette_limited_error := await MudaeRouletteLimitedError.create(
-                message, self.state.roll_command_queue
-            )
-        ) is not None:
-            logger.debug(roulette_limited_error)
             return
 
         if (
@@ -144,7 +122,10 @@ class AutoMudaeAgent(discord.Client):
                     if not self.mudae_channel:
                         continue
 
-                    if self.state.rolls_handled >= self.state.timer_status.rolls_available:
+                    if (
+                        self.state.rolls_handled
+                        >= self.state.timer_status.rolls_available
+                    ):
                         await self.send_timer_status_message()
                         continue
 
@@ -319,12 +300,19 @@ class AutoMudaeAgent(discord.Client):
         current_time = datetime.now(tz=timezone.utc)
         roll_time_elapsed = current_time - roll.message.created_at
         if roll_time_elapsed.total_seconds() >= 30:
-            logger.info("KAKERA REACT SKIPPED: Roll too old (%.1fs > 30s timeout)", roll_time_elapsed.total_seconds())
+            logger.info(
+                "KAKERA REACT SKIPPED: Roll too old (%.1fs > 30s timeout)",
+                roll_time_elapsed.total_seconds(),
+            )
             return
 
         roll_is_mine = roll.owner.id == self.user.id
         if not roll_is_mine:
-            logger.info("KAKERA REACT SKIPPED: Roll belongs to user %s, not me (%s)", roll.owner.id, self.user.id)
+            logger.info(
+                "KAKERA REACT SKIPPED: Roll belongs to user %s, not me (%s)",
+                roll.owner.id,
+                self.user.id,
+            )
             return
 
         kakera_buttons = [
@@ -334,7 +322,10 @@ class AutoMudaeAgent(discord.Client):
 
         if "kakeraP" in kakera_buttons:
             time_to_claim = self.get_reaction_time(roll)
-            logger.info("KAKERA REACTING: kakeraP found - immediate reaction (reaction time: %.2fs)", time_to_claim)
+            logger.info(
+                "KAKERA REACTING: kakeraP found - immediate reaction (reaction time: %.2fs)",
+                time_to_claim,
+            )
             async with self.react_rate_limiter:
                 await roll.kakera_react()
                 self.state.timer_status.can_kakera_react = False
@@ -348,39 +339,66 @@ class AutoMudaeAgent(discord.Client):
                 kakera_type in kakera_buttons
                 and self.state.timer_status.kakera_power < minimum_power
             ):
-                logger.info("KAKERA REACT SKIPPED: %s requires %s power but only have %s",
-                           kakera_type, minimum_power, self.state.timer_status.kakera_power)
+                logger.info(
+                    "KAKERA REACT SKIPPED: %s requires %s power but only have %s",
+                    kakera_type,
+                    minimum_power,
+                    self.state.timer_status.kakera_power,
+                )
                 return
 
         logger.info("PROCESSING: Evaluating for best kakera pick selection")
 
         if self.state.kakera_best_pick is None:
-            logger.info("BEST KAKERA UPDATED: No previous best pick - setting this as best (value: %s)", roll.kakera_value)
+            logger.info(
+                "BEST KAKERA UPDATED: No previous best pick - setting this as best (value: %s)",
+                roll.kakera_value,
+            )
             self.state.kakera_best_pick = roll
         elif self.state.kakera_best_pick.kakera_value <= roll.kakera_value:
-            logger.info("BEST KAKERA UPDATED: Higher value (%s >= %s) - replacing previous best",
-                       roll.kakera_value, self.state.kakera_best_pick.kakera_value)
+            logger.info(
+                "BEST KAKERA UPDATED: Higher value (%s >= %s) - replacing previous best",
+                roll.kakera_value,
+                self.state.kakera_best_pick.kakera_value,
+            )
             self.state.kakera_best_pick = roll
         else:
-            logger.info("BEST KAKERA UNCHANGED: Current roll value (%s) doesn't beat existing best (%s)",
-                       roll.kakera_value, self.state.kakera_best_pick.kakera_value)
+            logger.info(
+                "BEST KAKERA UNCHANGED: Current roll value (%s) doesn't beat existing best (%s)",
+                roll.kakera_value,
+                self.state.kakera_best_pick.kakera_value,
+            )
 
         for button_name in kakera_buttons:
             if button_name in self.config.mudae.kakeraReact.doNotReactToKakeraTypes:
-                logger.info("KAKERA REACT BLOCKED: %s is in blocked kakera types list", button_name)
+                logger.info(
+                    "KAKERA REACT BLOCKED: %s is in blocked kakera types list",
+                    button_name,
+                )
                 return
 
         if self.state.timer_status.rolls_available > self.state.rolls_handled:
-            remaining_rolls = self.state.timer_status.rolls_available - self.state.rolls_handled
-            logger.info("KAKERA REACT DEFERRED: Waiting for %s more rolls before reacting to best", remaining_rolls)
+            remaining_rolls = (
+                self.state.timer_status.rolls_available - self.state.rolls_handled
+            )
+            logger.info(
+                "KAKERA REACT DEFERRED: Waiting for %s more rolls before reacting to best",
+                remaining_rolls,
+            )
             return
 
         if not self.state.timer_status.can_kakera_react:
-            logger.info("KAKERA REACT BLOCKED: Timer cooldown active - cannot react yet")
+            logger.info(
+                "KAKERA REACT BLOCKED: Timer cooldown active - cannot react yet"
+            )
             return
 
         time_to_claim = self.get_reaction_time(roll)
-        logger.info("KAKERA REACTING: Best pick selected with buttons %s (reaction time: %.2fs)", kakera_buttons, time_to_claim)
+        logger.info(
+            "KAKERA REACTING: Best pick selected with buttons %s (reaction time: %.2fs)",
+            kakera_buttons,
+            time_to_claim,
+        )
         async with self.react_rate_limiter:
             await roll.kakera_react()
             self.state.timer_status.can_kakera_react = False
