@@ -8,7 +8,7 @@ discord:
 mudae:
   roll:
     command: $w
-    doNotRollWhenCanotClaim: True
+    doNotRollWhenCannotClaim: True
     doNotRollWhenCannotKakeraReact: False
     rollResetMinuteOffset: 0
   kakeraReact:

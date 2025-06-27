@@ -19,7 +19,7 @@ $defs:
       exception:
         $ref: '#/$defs/Criteria'
       minKakera:
-        default: 10000
+        default: 9223372036854775807
         title: Minkakera
         type: integer
       series:
@@ -41,7 +41,7 @@ $defs:
         title: Character
         type: array
       minKakera:
-        default: 10000
+        default: 9223372036854775807
         title: Minkakera
         type: integer
       series:
@@ -107,18 +107,18 @@ $defs:
         - $w
         title: Command
         type: string
+      doNotRollWhenCannotClaim:
+        title: Donotrollwhencannotclaim
+        type: boolean
       doNotRollWhenCannotKakeraReact:
         title: Donotrollwhencannotkakerareact
-        type: boolean
-      doNotRollWhenCanotClaim:
-        title: Donotrollwhencanotclaim
         type: boolean
       rollResetMinuteOffset:
         title: Rollresetminuteoffset
         type: integer
     required:
     - command
-    - doNotRollWhenCanotClaim
+    - doNotRollWhenCannotClaim
     - doNotRollWhenCannotKakeraReact
     - rollResetMinuteOffset
     title: RollConfig

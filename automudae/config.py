@@ -1,5 +1,6 @@
 # pylint: disable=R0903
 import logging
+import sys
 from typing import Literal
 
 import yaml
@@ -13,7 +14,7 @@ class Criteria(BaseModel):
     wish: bool = False
     character: list[str] = Field(default_factory=list[str])
     series: list[str] = Field(default_factory=list[str])
-    minKakera: int = 10_000
+    minKakera: int = sys.maxsize
 
 
 class ClaimCriteria(Criteria):
@@ -30,7 +31,7 @@ class ClaimConfig(BaseModel):
 class RollConfig(BaseModel):
 
     command: Literal["$wg", "$wa", "$w"]
-    doNotRollWhenCanotClaim: bool
+    doNotRollWhenCannotClaim: bool
     doNotRollWhenCannotKakeraReact: bool
     rollResetMinuteOffset: int
 

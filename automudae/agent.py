@@ -130,7 +130,7 @@ class AutoMudaeAgent(discord.Client):
                         continue
 
                     if (
-                        self.config.mudae.roll.doNotRollWhenCanotClaim
+                        self.config.mudae.roll.doNotRollWhenCannotClaim
                         and not self.state.timer_status.can_claim
                     ):
                         continue
