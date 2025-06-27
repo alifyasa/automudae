@@ -11,6 +11,20 @@ MUDAE_ROLL_TIMEOUT_SECONDS = 0.25
 
 
 async def get_roll_command_from_roll_message(msg: discord.Message) -> MudaeRollCommand:
+    """
+    Finds and returns the MudaeRollCommand associated with a given Discord message.
+    
+    Searches the message history in the same channel for a roll command that precedes the provided message within a configurable time window. Raises a ValueError if no matching roll command is found after searching the maximum allowed interval.
+    
+    Parameters:
+        msg (discord.Message): The Discord message for which to find the associated roll command.
+    
+    Returns:
+        MudaeRollCommand: The roll command instance determined to be the owner of the provided message.
+    
+    Raises:
+        ValueError: If no associated roll command is found within the search window.
+    """
     possible_owners: list[MudaeRollCommand] = []
     max_multiplier = 7  # up to 1.75 seconds
     for multiplier in range(1, max_multiplier + 1):
