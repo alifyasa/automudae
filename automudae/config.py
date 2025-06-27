@@ -17,14 +17,14 @@ class Criteria(BaseModel):
 
 
 class ClaimCriteria(Criteria):
-    exception: Criteria = Criteria()
+    exception: Criteria = Field(default_factory=Criteria)
 
 
 class ClaimConfig(BaseModel):
 
-    snipe: ClaimCriteria = ClaimCriteria()
-    earlyClaim: ClaimCriteria = ClaimCriteria()
-    lateClaim: ClaimCriteria = ClaimCriteria()
+    snipe: ClaimCriteria = Field(default_factory=ClaimCriteria)
+    earlyClaim: ClaimCriteria = Field(default_factory=ClaimCriteria)
+    lateClaim: ClaimCriteria = Field(default_factory=ClaimCriteria)
 
 
 class RollConfig(BaseModel):
@@ -46,8 +46,8 @@ class KakeraReactConfig(BaseModel):
 class MudaeConfig(BaseModel):
 
     roll: RollConfig
-    claim: ClaimConfig = ClaimConfig()
-    kakeraReact: KakeraReactConfig = KakeraReactConfig()
+    claim: ClaimConfig = Field(default_factory=ClaimConfig)
+    kakeraReact: KakeraReactConfig = Field(default_factory=KakeraReactConfig)
 
 
 class DiscordConfig(BaseModel):
