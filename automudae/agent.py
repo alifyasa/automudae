@@ -130,7 +130,7 @@ class AutoMudaeAgent(discord.Client):
                         continue
 
                     if (
-                        self.config.mudae.roll.doNotRollWhenCanotClaim
+                        self.config.mudae.roll.doNotRollWhenCannotClaim
                         and not self.state.timer_status.can_claim
                     ):
                         continue
@@ -162,11 +162,11 @@ class AutoMudaeAgent(discord.Client):
                 if self.user and result.owner.id == self.user.id:
                     logger.info(
                         "ROLL PROCESSING COMPLETE: %d rolls remaining",
-                        self.state.timer_status.rolls_available - self.state.rolls_handled,
+                        self.state.timer_status.rolls_available
+                        - self.state.rolls_handled,
                     )
 
     async def handle_claim(self, roll: MudaeClaimableRollResult) -> None:
-
         logger.info(roll)
 
         if not self.user:
@@ -190,14 +190,33 @@ class AutoMudaeAgent(discord.Client):
             )
             return
 
-        snipe_criteria = self.config.mudae.claim.snipe
-        if roll.is_qualified(snipe_criteria, self.user):
+        # Check snipe criteria and exceptions
+        meets_snipe_criteria = roll.is_qualified(
+            self.config.mudae.claim.snipe, self.user
+        )
+        meets_snipe_exception = roll.is_qualified(
+            self.config.mudae.claim.snipe.exception, self.user
+        )
+
+        logger.info(
+            "SNIPE EVALUATION: Meets criteria: %s, Meets exception: %s",
+            meets_snipe_criteria,
+            meets_snipe_exception,
+        )
+
+        if meets_snipe_criteria and not meets_snipe_exception:
             logger.info("CLAIMING: Roll meets snipe criteria - immediate claim")
             async with self.react_rate_limiter:
                 await roll.claim()
             self.state.timer_status.can_claim = False
             return
-        logger.info("SNIPE REJECTED: Roll doesn't meet snipe criteria")
+
+        if meets_snipe_exception:
+            logger.info(
+                "SNIPE REJECTED: Roll meets snipe criteria exception - skipping immediate claim"
+            )
+        else:
+            logger.info("SNIPE REJECTED: Roll doesn't meet snipe criteria")
 
         roll_is_mine = roll.owner.id == self.user.id
         if not roll_is_mine:
@@ -210,6 +229,7 @@ class AutoMudaeAgent(discord.Client):
 
         logger.info("PROCESSING: Roll is mine, evaluating for best claim selection")
 
+        # Update best claim roll logic
         if self.state.best_claim_roll is None:
             logger.info(
                 "BEST ROLL UPDATED: No previous best roll - setting this as best"
@@ -242,6 +262,7 @@ class AutoMudaeAgent(discord.Client):
 
         assert self.state.best_claim_roll
 
+        # Wait for more rolls if available
         if self.state.timer_status.rolls_available > self.state.rolls_handled:
             logger.info(
                 "CLAIM DEFERRED: Waiting for %s more rolls before claiming best",
@@ -249,38 +270,87 @@ class AutoMudaeAgent(discord.Client):
             )
             return
 
-        qualified_early_claim = self.state.best_claim_roll.is_qualified(
+        # Evaluate claim criteria and exceptions
+        meets_early_claim_criteria = self.state.best_claim_roll.is_qualified(
             self.config.mudae.claim.earlyClaim, self.user
         )
-        qualified_late_claim = self.state.best_claim_roll.is_qualified(
+        meets_late_claim_criteria = self.state.best_claim_roll.is_qualified(
             self.config.mudae.claim.lateClaim, self.user
         )
+        meets_early_claim_exception = self.state.best_claim_roll.is_qualified(
+            self.config.mudae.claim.earlyClaim.exception, self.user
+        )
+        meets_late_claim_exception = self.state.best_claim_roll.is_qualified(
+            self.config.mudae.claim.lateClaim.exception, self.user
+        )
+
         logger.info(
-            "CLAIM EVALUATION: Early qualified: %s, Late qualified: %s, Next hour is reset: %s",
-            qualified_early_claim,
-            qualified_late_claim,
+            "CLAIM EVALUATION: Early criteria: %s, Early exception: %s, Late criteria: %s, Late exception: %s, Next hour is reset: %s",
+            meets_early_claim_criteria,
+            meets_early_claim_exception,
+            meets_late_claim_criteria,
+            meets_late_claim_exception,
             self.state.timer_status.next_hour_is_reset,
         )
-        if qualified_early_claim or (
-            qualified_late_claim and self.state.timer_status.next_hour_is_reset
-        ):
-            if qualified_early_claim:
-                logger.info("CLAIMING: Best roll meets early claim criteria")
-            else:
-                logger.info(
-                    "CLAIMING: Best roll meets late claim criteria and next hour is reset"
-                )
+
+        # Determine if we should claim based on criteria and exceptions
+        should_claim_early = (
+            meets_early_claim_criteria and not meets_early_claim_exception
+        )
+        should_claim_late = (
+            meets_late_claim_criteria
+            and not meets_late_claim_exception
+            and self.state.timer_status.next_hour_is_reset
+        )
+
+        if should_claim_early or should_claim_late:
+            if should_claim_early:
+                if meets_early_claim_exception:
+                    logger.info(
+                        "CLAIMING: Best roll meets early claim criteria but also meets exception - evaluating late claim"
+                    )
+                else:
+                    logger.info(
+                        "CLAIMING: Best roll meets early claim criteria and doesn't meet exception"
+                    )
+
+            if should_claim_late and not should_claim_early:
+                if meets_late_claim_exception:
+                    logger.info(
+                        "CLAIMING: Best roll meets late claim criteria but also meets exception - skipping claim"
+                    )
+                else:
+                    logger.info(
+                        "CLAIMING: Best roll meets late claim criteria, doesn't meet exception, and next hour is reset"
+                    )
+
             async with self.react_rate_limiter:
                 await self.state.best_claim_roll.claim()
             self.state.timer_status.can_claim = False
         else:
-            if qualified_late_claim:
+            # Detailed rejection logging
+            if meets_early_claim_criteria and meets_early_claim_exception:
+                logger.info(
+                    "CLAIM REJECTED: Roll meets early criteria but also meets early claim exception"
+                )
+            elif meets_late_claim_criteria and meets_late_claim_exception:
+                logger.info(
+                    "CLAIM REJECTED: Roll meets late criteria but also meets late claim exception"
+                )
+            elif (
+                meets_late_claim_criteria
+                and not self.state.timer_status.next_hour_is_reset
+            ):
                 logger.info(
                     "CLAIM REJECTED: Roll meets late criteria but next hour is not reset"
                 )
-            else:
+            elif not meets_early_claim_criteria and not meets_late_claim_criteria:
                 logger.info(
                     "CLAIM REJECTED: Roll doesn't meet early or late claim criteria"
+                )
+            else:
+                logger.info(
+                    "CLAIM REJECTED: Unknown rejection reason - criteria evaluation may need review"
                 )
 
         logger.info("PROCESSING COMPLETE: Resetting best claim roll")

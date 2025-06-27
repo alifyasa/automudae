@@ -1,5 +1,6 @@
 # pylint: disable=R0903
 import logging
+import sys
 from typing import Literal
 
 import yaml
@@ -8,25 +9,29 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 
-class ClaimCriteria(BaseModel):
+class Criteria(BaseModel):
 
     wish: bool = False
     character: list[str] = Field(default_factory=list[str])
     series: list[str] = Field(default_factory=list[str])
-    minKakera: int = 10_000
+    minKakera: int = sys.maxsize
+
+
+class ClaimCriteria(Criteria):
+    exception: Criteria = Field(default_factory=Criteria)
 
 
 class ClaimConfig(BaseModel):
 
-    snipe: ClaimCriteria = ClaimCriteria()
-    earlyClaim: ClaimCriteria = ClaimCriteria()
-    lateClaim: ClaimCriteria = ClaimCriteria()
+    snipe: ClaimCriteria = Field(default_factory=ClaimCriteria)
+    earlyClaim: ClaimCriteria = Field(default_factory=ClaimCriteria)
+    lateClaim: ClaimCriteria = Field(default_factory=ClaimCriteria)
 
 
 class RollConfig(BaseModel):
 
     command: Literal["$wg", "$wa", "$w"]
-    doNotRollWhenCanotClaim: bool
+    doNotRollWhenCannotClaim: bool
     doNotRollWhenCannotKakeraReact: bool
     rollResetMinuteOffset: int
 
@@ -42,8 +47,8 @@ class KakeraReactConfig(BaseModel):
 class MudaeConfig(BaseModel):
 
     roll: RollConfig
-    claim: ClaimConfig = ClaimConfig()
-    kakeraReact: KakeraReactConfig = KakeraReactConfig()
+    claim: ClaimConfig = Field(default_factory=ClaimConfig)
+    kakeraReact: KakeraReactConfig = Field(default_factory=KakeraReactConfig)
 
 
 class DiscordConfig(BaseModel):
