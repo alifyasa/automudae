@@ -7,12 +7,13 @@ from automudae.mudae.roll.command import MudaeRollCommand
 
 logger = logging.getLogger(__name__)
 
-MUDAE_ROLL_TIMEOUT_SECONDS = 0.5
+MUDAE_ROLL_TIMEOUT_SECONDS = 0.25
 
 
 async def get_roll_command_from_roll_message(msg: discord.Message) -> MudaeRollCommand:
     possible_owners: list[MudaeRollCommand] = []
-    for multiplier in range(1, 4):
+    max_multiplier = 7  # up to 1.75 seconds
+    for multiplier in range(1, max_multiplier + 1):
         history = msg.channel.history(
             before=msg.created_at,
             after=msg.created_at
@@ -27,5 +28,11 @@ async def get_roll_command_from_roll_message(msg: discord.Message) -> MudaeRollC
             continue
         # If not, just use that
         break
-    assert len(possible_owners) != 0
+
+    if len(possible_owners) == 0:
+        total_seconds_searched = MUDAE_ROLL_TIMEOUT_SECONDS * max_multiplier
+        raise ValueError(
+            f"Owner not found! Tried to search the past {total_seconds_searched} seconds"
+        )
+
     return possible_owners[-1]
