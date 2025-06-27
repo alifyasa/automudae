@@ -159,10 +159,11 @@ class AutoMudaeAgent(discord.Client):
 
                 await self.handle_finalizer()
 
-                logger.info(
-                    "ROLL PROCESSING COMPLETE: %d rolls remaining",
-                    self.state.timer_status.rolls_available - self.state.rolls_handled,
-                )
+                if self.user and result.owner.id == self.user.id:
+                    logger.info(
+                        "ROLL PROCESSING COMPLETE: %d rolls remaining",
+                        self.state.timer_status.rolls_available - self.state.rolls_handled,
+                    )
 
     async def handle_claim(self, roll: MudaeClaimableRollResult) -> None:
 
