@@ -43,7 +43,7 @@ class AutoMudaeAgent(discord.Client):
 
         self.mudae_channel: discord.TextChannel | None = None
         self.react_rate_limiter = AsyncLimiter(1, 0.25)
-        self.command_rate_limiter = AsyncLimiter(1, 1.75)
+        self.command_rate_limiter = AsyncLimiter(1, 1)
         self.tasks: list[asyncio.Task[None]] = []
         self.state = AutoMudaeAgentState()
 
