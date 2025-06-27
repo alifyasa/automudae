@@ -88,7 +88,7 @@ class AutoMudaeAgent(discord.Client):
         if message.channel.id != self.config.discord.channelId:
             return
 
-        logger.info(discord_message_to_str(message))
+        logger.debug(discord_message_to_str(message))
 
         if (
             claimable_roll := await MudaeClaimableRollResult.create(message)
