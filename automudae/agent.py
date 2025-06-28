@@ -431,7 +431,6 @@ class AutoMudaeAgent(discord.Client):
             )
             async with self.react_rate_limiter:
                 await roll.kakera_react()
-                self.state.timer_status.can_kakera_react = False
             return
 
         kakera_power_requirements = (
