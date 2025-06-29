@@ -125,6 +125,7 @@ class AutoMudaeAgent(discord.Client):
                     if (
                         self.state.rolls_handled
                         >= self.state.timer_status.rolls_available
+                        or self.state.rolls_executed >= 1.25 * self.state.timer_status.rolls_available
                     ):
                         await self.send_timer_status_message()
                         continue
